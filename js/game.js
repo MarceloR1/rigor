@@ -631,19 +631,11 @@ class AudioSynth {
             }
         }
 
-        function update(delta) {
-            if (state.isPaused || !document.getElementById('safe-modal').classList.contains('hidden')) return;
-            animTime += delta;
-            const frameScale = delta * 60;
-
-            updateCamera(delta);
-
-            let playerMoving = false;
-
-            // Player Movement Logic
+        function updatePlayerMovement(delta, frameScale) {
             if (!state.l3Hidden) {
                 let dx = 0;
                 let dy = 0;
+                let moved = false;
 
                 if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
                 if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
@@ -666,7 +658,7 @@ class AudioSynth {
                     if (!collide) {
                         player.x = nextX;
                         player.y = nextY;
-                        playerMoving = true;
+                        moved = true;
 
                         player.stepTimer += delta;
                         if (player.stepTimer > CONFIG.FOOTSTEP_INTERVAL) {
@@ -676,20 +668,36 @@ class AudioSynth {
                     }
                 }
 
-                // Level 1 Corridor Loop Check
-                if (state.currentLevel === 1) {
-                    if (player.x > viewportWidth - 50) {
-                        player.x = 70;
-                        state.l1LoopCount++;
-                        setupL1Loop();
-                    }
-                }
-            } else {
-                // Breath Minigame in Wardrobe
-                state.l3BreathPos += state.l3BreathDir * CONFIG.BREATH_SPEED * delta;
-                if (state.l3BreathPos > 100 || state.l3BreathPos < 0) state.l3BreathDir *= -1;
-                document.getElementById('breath-pointer').style.left = `${state.l3BreathPos}%`;
+                updateCorridorLoop();
+                return moved;
             }
+
+            updateBreathMinigame(delta);
+            return false;
+        }
+
+        function updateCorridorLoop() {
+            if (state.currentLevel === 1 && player.x > viewportWidth - 50) {
+                player.x = 70;
+                state.l1LoopCount++;
+                setupL1Loop();
+            }
+        }
+
+        function updateBreathMinigame(delta) {
+            state.l3BreathPos += state.l3BreathDir * CONFIG.BREATH_SPEED * delta;
+            if (state.l3BreathPos > 100 || state.l3BreathPos < 0) state.l3BreathDir *= -1;
+            document.getElementById('breath-pointer').style.left = `${state.l3BreathPos}%`;
+        }
+
+        function update(delta) {
+            if (state.isPaused || !document.getElementById('safe-modal').classList.contains('hidden')) return;
+            animTime += delta;
+            const frameScale = delta * 60;
+
+            updateCamera(delta);
+
+            const playerMoving = updatePlayerMovement(delta, frameScale);
 
             player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
 
