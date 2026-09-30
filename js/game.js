@@ -620,12 +620,7 @@ class AudioSynth {
             setTimeout(() => el.classList.add('hidden'), CONFIG.PROMPT_DURATION);
         }
 
-        function update(delta) {
-            if (state.isPaused || !document.getElementById('safe-modal').classList.contains('hidden')) return;
-            animTime += delta;
-            const frameScale = delta * 60;
-
-            // Camera REC Toggle via Spacebar
+        function updateCamera(delta) {
             if (keys['Space'] && state.battery > 0 && !state.l3Hidden) {
                 state.isRecCameraOn = true;
                 state.battery = Math.max(0, state.battery - delta * CONFIG.BATTERY_DRAIN_PER_SEC * selectedChar.drainRate);
@@ -634,6 +629,14 @@ class AudioSynth {
                 state.isRecCameraOn = false;
                 document.getElementById('rec-ui').classList.add('hidden');
             }
+        }
+
+        function update(delta) {
+            if (state.isPaused || !document.getElementById('safe-modal').classList.contains('hidden')) return;
+            animTime += delta;
+            const frameScale = delta * 60;
+
+            updateCamera(delta);
 
             let playerMoving = false;
 
