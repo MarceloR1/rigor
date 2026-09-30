@@ -44,7 +44,7 @@ const CONFIG = {
     SCORE_PER_CANDLE: 300,
 };
 
-class GDDAudioSynth {
+class AudioSynth {
             constructor() {
                 this.ctx = null;
             }
@@ -116,7 +116,7 @@ class GDDAudioSynth {
             }
         }
 
-        const audio = new GDDAudioSynth();
+        const audio = new AudioSynth();
         const canvas = document.getElementById('game-canvas');
 
         const CHARACTERS = {
@@ -522,27 +522,27 @@ class GDDAudioSynth {
                 return;
             }
 
-            interactables.forEach(obj => {
-                const dist = Math.hypot(player.x - obj.x, player.y - obj.y);
-                if (dist < obj.radius + 28) {
-                    if (obj.type === 'anomaly') {
+            interactables.forEach(item => {
+                const dist = Math.hypot(player.x - item.x, player.y - item.y);
+                if (dist < item.radius + 28) {
+                    if (item.type === 'anomaly') {
                         audio.playPickup();
                         state.keysCollected[1] = true;
                         showPrompt("¡Anomalía identificada! Has purificado el pasillo y obtenido la LLAVE 1.");
                         updateHUD();
-                    } else if (obj.type === 'l1_door') {
+                    } else if (item.type === 'l1_door') {
                         if (state.keysCollected[1]) {
                             loadLevel(2);
                         } else {
                             showPrompt("La puerta está atrancada. Encuentra la anomalía en el pasillo.");
                         }
-                    } else if (obj.type === 'safe') {
+                    } else if (item.type === 'safe') {
                         if (state.keysCollected[2]) {
                             showPrompt("La caja fuerte ya fue abierta.");
                         } else {
                             openSafeModal();
                         }
-                    } else if (obj.type === 'wardrobe') {
+                    } else if (item.type === 'wardrobe') {
                         state.l3Hidden = true;
                         ghosts.forEach((ghost) => {
                             ghost.lastKnown.x = player.x;
@@ -553,8 +553,8 @@ class GDDAudioSynth {
                             }
                         });
                         document.getElementById('breath-minigame').classList.remove('hidden');
-                    } else if (obj.type === 'altar') {
-                        if (obj.idx === state.l3AltarSeq[state.l3AltarProgress]) {
+                    } else if (item.type === 'altar') {
+                        if (item.idx === state.l3AltarSeq[state.l3AltarProgress]) {
                             state.l3AltarProgress++;
                             audio.playPickup();
                             showPrompt(`Altar activado (${state.l3AltarProgress}/3).`);
@@ -569,7 +569,7 @@ class GDDAudioSynth {
                             state.l3AltarProgress = 0;
                             showPrompt("Secuencia incorrecta. La llama del altar se ha apagado.");
                         }
-                    } else if (obj.type === 'chapel_exit') {
+                    } else if (item.type === 'chapel_exit') {
                         if (state.keysCollected[3]) {
                             triggerVictory();
                         } else {
@@ -590,10 +590,10 @@ class GDDAudioSynth {
             document.getElementById('safe-modal').classList.add('hidden');
         }
 
-        function typeSafeDigit(d) {
+        function typeSafeDigit(digit) {
             audio.playClick();
             if (state.l2EnteredCode.length < 4) {
-                state.l2EnteredCode += d;
+                state.l2EnteredCode += digit;
                 document.getElementById('safe-display').innerText = state.l2EnteredCode.padEnd(4, '-');
             }
         }
@@ -659,9 +659,9 @@ class GDDAudioSynth {
                     const nextY = player.y + (dy / len) * player.speed * frameScale;
 
                     let collide = false;
-                    walls.forEach(w => {
-                        if (nextX > w.x - player.radius && nextX < w.x + w.w + player.radius &&
-                            nextY > w.y - player.radius && nextY < w.y + w.h + player.radius) {
+                    walls.forEach(wall => {
+                        if (nextX > wall.x - player.radius && nextX < wall.x + wall.w + player.radius &&
+                            nextY > wall.y - player.radius && nextY < wall.y + wall.h + player.radius) {
                             collide = true;
                         }
                     });
@@ -715,203 +715,203 @@ class GDDAudioSynth {
             }
 
             // Ghosts AI & Flashlight Slowdown Mechanics
-            ghosts.forEach(g => {
-                const distance = Math.hypot(player.x - g.x, player.y - g.y);
-                const angleToGhost = Math.atan2(g.y - player.y, g.x - player.x);
+            ghosts.forEach(ghost => {
+                const distance = Math.hypot(player.x - ghost.x, player.y - ghost.y);
+                const angleToGhost = Math.atan2(ghost.y - player.y, ghost.x - player.x);
                 let angleDifference = Math.abs(player.angle - angleToGhost);
                 if (angleDifference > Math.PI) angleDifference = Math.PI * 2 - angleDifference;
-                const hasLineOfSight = hasClearSight(g.x, g.y, player.x, player.y);
+                const hasLineOfSight = hasClearSight(ghost.x, ghost.y, player.x, player.y);
                 const inLight = hasLineOfSight && angleDifference < CONFIG.FLASHLIGHT_ANGLE && distance < CONFIG.FLASHLIGHT_RANGE;
 
-                g.stateTimer = Math.max(0, (g.stateTimer || 0) - delta);
-                g.lungeCooldown = Math.max(0, (g.lungeCooldown || 0) - delta);
-                g.searchTimer = Math.max(0, (g.searchTimer || 0) - delta);
-                g.isFleeing = false;
-                g.isCharging = false;
-                g.isStunned = false;
+                ghost.stateTimer = Math.max(0, (ghost.stateTimer || 0) - delta);
+                ghost.lungeCooldown = Math.max(0, (ghost.lungeCooldown || 0) - delta);
+                ghost.searchTimer = Math.max(0, (ghost.searchTimer || 0) - delta);
+                ghost.isFleeing = false;
+                ghost.isCharging = false;
+                ghost.isStunned = false;
 
-                if (g.type === 'stalker') {
+                if (ghost.type === 'stalker') {
                     if (inLight) {
-                        g.aiState = 'flee';
-                        g.stateTimer = CONFIG.STALKER_FLEE_TIME;
-                        g.isFleeing = true;
-                    } else if (g.aiState === 'flee' && g.stateTimer <= 0) {
-                        g.aiState = 'reposition';
-                        g.stateTimer = CONFIG.STALKER_REPOSITION_TIME;
-                        g.pathIdx = (g.pathIdx + 1) % g.path.length;
-                    } else if (g.aiState === 'reposition' && g.stateTimer <= 0) {
-                        g.aiState = 'patrol';
-                    } else if (g.aiState === 'windup' && g.stateTimer <= 0) {
-                        g.aiState = 'lunge';
-                        g.stateTimer = CONFIG.STALKER_LUNGE_TIME;
-                        g.lungeCooldown = CONFIG.STALKER_LUNGE_COOLDOWN;
-                    } else if (g.aiState === 'lunge' && g.stateTimer <= 0) {
-                        g.aiState = 'recover';
-                        g.stateTimer = CONFIG.STALKER_RECOVER_TIME;
-                    } else if (g.aiState === 'recover' && g.stateTimer <= 0) {
-                        g.aiState = 'reposition';
-                        g.stateTimer = 0.45;
-                    } else if (g.aiState === 'patrol' && hasLineOfSight && distance < CONFIG.STALKER_DETECT_RANGE && g.lungeCooldown <= 0) {
-                        g.lastKnown.x = player.x;
-                        g.lastKnown.y = player.y;
-                        g.aiState = 'windup';
-                        g.stateTimer = CONFIG.STALKER_WINDUP_TIME;
+                        ghost.aiState = 'flee';
+                        ghost.stateTimer = CONFIG.STALKER_FLEE_TIME;
+                        ghost.isFleeing = true;
+                    } else if (ghost.aiState === 'flee' && ghost.stateTimer <= 0) {
+                        ghost.aiState = 'reposition';
+                        ghost.stateTimer = CONFIG.STALKER_REPOSITION_TIME;
+                        ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
+                    } else if (ghost.aiState === 'reposition' && ghost.stateTimer <= 0) {
+                        ghost.aiState = 'patrol';
+                    } else if (ghost.aiState === 'windup' && ghost.stateTimer <= 0) {
+                        ghost.aiState = 'lunge';
+                        ghost.stateTimer = CONFIG.STALKER_LUNGE_TIME;
+                        ghost.lungeCooldown = CONFIG.STALKER_LUNGE_COOLDOWN;
+                    } else if (ghost.aiState === 'lunge' && ghost.stateTimer <= 0) {
+                        ghost.aiState = 'recover';
+                        ghost.stateTimer = CONFIG.STALKER_RECOVER_TIME;
+                    } else if (ghost.aiState === 'recover' && ghost.stateTimer <= 0) {
+                        ghost.aiState = 'reposition';
+                        ghost.stateTimer = 0.45;
+                    } else if (ghost.aiState === 'patrol' && hasLineOfSight && distance < CONFIG.STALKER_DETECT_RANGE && ghost.lungeCooldown <= 0) {
+                        ghost.lastKnown.x = player.x;
+                        ghost.lastKnown.y = player.y;
+                        ghost.aiState = 'windup';
+                        ghost.stateTimer = CONFIG.STALKER_WINDUP_TIME;
                     }
-                } else if (g.type === 'crawler') {
+                } else if (ghost.type === 'crawler') {
                     const canSensePlayer = !state.l3Hidden && distance < CONFIG.CRAWLER_SENSE_RANGE &&
                         ((playerMoving && distance < CONFIG.CRAWLER_MOVEMENT_SENSE) || (state.isRecCameraOn && hasLineOfSight) || distance < CONFIG.CRAWLER_CLOSE_RANGE);
-                    g.hasVisual = canSensePlayer;
+                    ghost.hasVisual = canSensePlayer;
                     if (canSensePlayer) {
-                        g.lastKnown.x = player.x;
-                        g.lastKnown.y = player.y;
-                        g.searchTimer = CONFIG.CRAWLER_SEARCH_TIME;
-                        if (distance < CONFIG.CRAWLER_LUNGE_RANGE && g.aiState !== 'lunge' && g.lungeCooldown <= 0) {
-                            g.aiState = 'lunge';
-                            g.stateTimer = CONFIG.CRAWLER_LUNGE_TIME;
-                            g.lungeCooldown = CONFIG.CRAWLER_LUNGE_COOLDOWN;
-                        } else if (g.aiState !== 'lunge') {
-                            g.aiState = 'track';
+                        ghost.lastKnown.x = player.x;
+                        ghost.lastKnown.y = player.y;
+                        ghost.searchTimer = CONFIG.CRAWLER_SEARCH_TIME;
+                        if (distance < CONFIG.CRAWLER_LUNGE_RANGE && ghost.aiState !== 'lunge' && ghost.lungeCooldown <= 0) {
+                            ghost.aiState = 'lunge';
+                            ghost.stateTimer = CONFIG.CRAWLER_LUNGE_TIME;
+                            ghost.lungeCooldown = CONFIG.CRAWLER_LUNGE_COOLDOWN;
+                        } else if (ghost.aiState !== 'lunge') {
+                            ghost.aiState = 'track';
                         }
-                    } else if (g.aiState === 'track' && g.searchTimer <= 0) {
-                        g.aiState = 'search';
-                        g.stateTimer = CONFIG.CRAWLER_SEARCH_MOVE_TIME;
-                        g.pathIdx = (g.pathIdx + 1) % g.path.length;
-                    } else if (g.aiState === 'search' && g.stateTimer <= 0) {
-                        g.aiState = 'patrol';
-                    } else if (g.aiState === 'lunge' && g.stateTimer <= 0) {
-                        g.aiState = distance < 230 ? 'track' : 'search';
-                        g.stateTimer = 0.85;
+                    } else if (ghost.aiState === 'track' && ghost.searchTimer <= 0) {
+                        ghost.aiState = 'search';
+                        ghost.stateTimer = CONFIG.CRAWLER_SEARCH_MOVE_TIME;
+                        ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
+                    } else if (ghost.aiState === 'search' && ghost.stateTimer <= 0) {
+                        ghost.aiState = 'patrol';
+                    } else if (ghost.aiState === 'lunge' && ghost.stateTimer <= 0) {
+                        ghost.aiState = distance < 230 ? 'track' : 'search';
+                        ghost.stateTimer = 0.85;
                     }
-                    g.isStunned = inLight;
-                } else if (g.type === 'screamer') {
-                    if (state.l3Hidden && ['windup', 'charge'].includes(g.aiState)) {
-                        g.aiState = 'recover';
-                        g.stateTimer = CONFIG.SCREAMER_STUN_TIME;
-                    } else if (inLight && (g.aiState === 'windup' || g.aiState === 'charge')) {
-                        g.aiState = 'stunned';
-                        g.stateTimer = CONFIG.SCREAMER_STUN_TIME;
-                        g.lungeCooldown = Math.max(g.lungeCooldown, 1.2);
-                    } else if (g.aiState === 'windup' && g.stateTimer <= 0) {
-                        g.aiState = 'charge';
-                        g.stateTimer = CONFIG.SCREAMER_CHARGE_TIME;
-                        g.lungeCooldown = CONFIG.SCREAMER_CHARGE_COOLDOWN;
-                    } else if (g.aiState === 'charge' && g.stateTimer <= 0) {
-                        g.aiState = 'recover';
-                        g.stateTimer = CONFIG.SCREAMER_RECOVER_TIME;
-                    } else if (g.aiState === 'recover' && g.stateTimer <= 0) {
-                        g.aiState = 'patrol';
-                    } else if (g.aiState === 'stunned' && g.stateTimer <= 0) {
-                        g.aiState = 'recover';
-                        g.stateTimer = 1.1;
-                    } else if (!state.l3Hidden && hasLineOfSight && g.aiState === 'patrol' && distance < CONFIG.SCREAMER_DETECT_RANGE && g.lungeCooldown <= 0) {
-                        g.lastKnown.x = player.x;
-                        g.lastKnown.y = player.y;
-                        g.aiState = 'windup';
-                        g.stateTimer = CONFIG.SCREAMER_WINDUP_TIME;
+                    ghost.isStunned = inLight;
+                } else if (ghost.type === 'screamer') {
+                    if (state.l3Hidden && ['windup', 'charge'].includes(ghost.aiState)) {
+                        ghost.aiState = 'recover';
+                        ghost.stateTimer = CONFIG.SCREAMER_STUN_TIME;
+                    } else if (inLight && (ghost.aiState === 'windup' || ghost.aiState === 'charge')) {
+                        ghost.aiState = 'stunned';
+                        ghost.stateTimer = CONFIG.SCREAMER_STUN_TIME;
+                        ghost.lungeCooldown = Math.max(ghost.lungeCooldown, 1.2);
+                    } else if (ghost.aiState === 'windup' && ghost.stateTimer <= 0) {
+                        ghost.aiState = 'charge';
+                        ghost.stateTimer = CONFIG.SCREAMER_CHARGE_TIME;
+                        ghost.lungeCooldown = CONFIG.SCREAMER_CHARGE_COOLDOWN;
+                    } else if (ghost.aiState === 'charge' && ghost.stateTimer <= 0) {
+                        ghost.aiState = 'recover';
+                        ghost.stateTimer = CONFIG.SCREAMER_RECOVER_TIME;
+                    } else if (ghost.aiState === 'recover' && ghost.stateTimer <= 0) {
+                        ghost.aiState = 'patrol';
+                    } else if (ghost.aiState === 'stunned' && ghost.stateTimer <= 0) {
+                        ghost.aiState = 'recover';
+                        ghost.stateTimer = 1.1;
+                    } else if (!state.l3Hidden && hasLineOfSight && ghost.aiState === 'patrol' && distance < CONFIG.SCREAMER_DETECT_RANGE && ghost.lungeCooldown <= 0) {
+                        ghost.lastKnown.x = player.x;
+                        ghost.lastKnown.y = player.y;
+                        ghost.aiState = 'windup';
+                        ghost.stateTimer = CONFIG.SCREAMER_WINDUP_TIME;
                     }
-                    g.isStunned = inLight || g.aiState === 'stunned';
+                    ghost.isStunned = inLight || ghost.aiState === 'stunned';
                 }
 
                 let targetX = null;
                 let targetY = null;
-                let currentSpeed = g.speed;
-                if (state.l3FinalChase && !state.l3Hidden && g.type === 'screamer') {
-                    g.aiState = 'charge';
-                    g.stateTimer = Math.max(g.stateTimer, 0.25);
+                let currentSpeed = ghost.speed;
+                if (state.l3FinalChase && !state.l3Hidden && ghost.type === 'screamer') {
+                    ghost.aiState = 'charge';
+                    ghost.stateTimer = Math.max(ghost.stateTimer, 0.25);
                 }
 
-                if (g.type === 'stalker') {
-                    if (g.aiState === 'flee') {
+                if (ghost.type === 'stalker') {
+                    if (ghost.aiState === 'flee') {
                         targetX = player.x;
                         targetY = player.y;
                         currentSpeed *= 2.25;
-                        g.isFleeing = true;
-                    } else if (g.aiState === 'windup') {
+                        ghost.isFleeing = true;
+                    } else if (ghost.aiState === 'windup') {
                         targetX = player.x;
                         targetY = player.y;
                         currentSpeed *= 0.18;
-                        g.isCharging = true;
-                    } else if (g.aiState === 'lunge') {
+                        ghost.isCharging = true;
+                    } else if (ghost.aiState === 'lunge') {
                         targetX = player.x;
                         targetY = player.y;
                         currentSpeed *= 2.1;
-                        g.isCharging = true;
-                    } else if (g.aiState === 'reposition') {
-                        const waypoint = g.path[g.pathIdx];
+                        ghost.isCharging = true;
+                    } else if (ghost.aiState === 'reposition') {
+                        const waypoint = ghost.path[ghost.pathIdx];
                         targetX = waypoint.x;
                         targetY = waypoint.y;
                         currentSpeed *= 1.45;
                     }
-                } else if (g.type === 'crawler') {
-                    if (g.aiState === 'track' || g.aiState === 'lunge') {
-                        const target = g.hasVisual ? player : g.lastKnown;
+                } else if (ghost.type === 'crawler') {
+                    if (ghost.aiState === 'track' || ghost.aiState === 'lunge') {
+                        const target = ghost.hasVisual ? player : ghost.lastKnown;
                         targetX = target.x;
                         targetY = target.y;
-                        currentSpeed *= g.aiState === 'lunge' ? 1.28 : 0.68;
-                        g.isCharging = g.aiState === 'lunge';
-                    } else if (g.aiState === 'search') {
-                        targetX = g.lastKnown.x;
-                        targetY = g.lastKnown.y;
+                        currentSpeed *= ghost.aiState === 'lunge' ? 1.28 : 0.68;
+                        ghost.isCharging = ghost.aiState === 'lunge';
+                    } else if (ghost.aiState === 'search') {
+                        targetX = ghost.lastKnown.x;
+                        targetY = ghost.lastKnown.y;
                         currentSpeed *= 0.82;
                     }
-                } else if (g.type === 'screamer') {
-                    if (g.aiState === 'windup') {
-                        targetX = g.lastKnown.x;
-                        targetY = g.lastKnown.y;
+                } else if (ghost.type === 'screamer') {
+                    if (ghost.aiState === 'windup') {
+                        targetX = ghost.lastKnown.x;
+                        targetY = ghost.lastKnown.y;
                         currentSpeed *= 0.08;
-                        g.isCharging = true;
-                    } else if (g.aiState === 'charge') {
-                        const chargeTarget = state.l3FinalChase && hasLineOfSight ? player : g.lastKnown;
+                        ghost.isCharging = true;
+                    } else if (ghost.aiState === 'charge') {
+                        const chargeTarget = state.l3FinalChase && hasLineOfSight ? player : ghost.lastKnown;
                         targetX = chargeTarget.x;
                         targetY = chargeTarget.y;
                         currentSpeed *= state.l3FinalChase ? 2.35 : 2.0;
-                        g.isCharging = true;
-                    } else if (g.aiState === 'stunned') {
+                        ghost.isCharging = true;
+                    } else if (ghost.aiState === 'stunned') {
                         currentSpeed = 0;
                     }
                 }
 
-                if (targetX === null && g.path?.length) {
-                    const waypoint = g.path[g.pathIdx];
+                if (targetX === null && ghost.path?.length) {
+                    const waypoint = ghost.path[ghost.pathIdx];
                     targetX = waypoint.x;
                     targetY = waypoint.y;
-                    if (Math.hypot(waypoint.x - g.x, waypoint.y - g.y) < 24) {
-                        g.pathIdx = (g.pathIdx + 1) % g.path.length;
+                    if (Math.hypot(waypoint.x - ghost.x, waypoint.y - ghost.y) < 24) {
+                        ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
                     }
             }
 
-                if (g.isStunned) currentSpeed *= 0.22 * selectedChar.ghostHesitation;
+                if (ghost.isStunned) currentSpeed *= 0.22 * selectedChar.ghostHesitation;
                 if (targetX !== null && targetY !== null && currentSpeed > 0) {
-                    let moveAngle = Math.atan2(targetY - g.y, targetX - g.x);
-                    if (g.isFleeing) moveAngle += Math.PI;
+                    let moveAngle = Math.atan2(targetY - ghost.y, targetX - ghost.x);
+                    if (ghost.isFleeing) moveAngle += Math.PI;
                     const step = currentSpeed * frameScale;
                     const collides = (x, y) => walls.some((wall) =>
-                        x + g.radius > wall.x && x - g.radius < wall.x + wall.w &&
-                        y + g.radius > wall.y && y - g.radius < wall.y + wall.h
+                        x + ghost.radius > wall.x && x - ghost.radius < wall.x + wall.w &&
+                        y + ghost.radius > wall.y && y - ghost.radius < wall.y + wall.h
                     ) || interactables.some((object) => {
                         if (!['wardrobe', 'altar', 'safe'].includes(object.type)) return false;
                         const obstacleRadius = object.type === 'wardrobe' ? 34 : object.type === 'safe' ? 31 : 30;
-                        return Math.hypot(x - object.x, y - object.y) < g.radius + obstacleRadius;
+                        return Math.hypot(x - object.x, y - object.y) < ghost.radius + obstacleRadius;
                     }) || state.currentLevel === 2 && [
                         { x: viewportWidth * 0.35, y: viewportHeight * 0.32 },
                         { x: viewportWidth * 0.55, y: viewportHeight * 0.68 }
-                    ].some((bed) => Math.abs(x - bed.x) < g.radius + 48 && Math.abs(y - bed.y) < g.radius + 28);
+                    ].some((bed) => Math.abs(x - bed.x) < ghost.radius + 48 && Math.abs(y - bed.y) < ghost.radius + 28);
                     const detours = [0, 0.48, -0.48, 0.92, -0.92, 1.38, -1.38, Math.PI];
                     const moveAngleFound = detours
                         .map((offset) => moveAngle + offset)
-                        .find((angle) => !collides(g.x + Math.cos(angle) * step, g.y + Math.sin(angle) * step));
+                        .find((angle) => !collides(ghost.x + Math.cos(angle) * step, ghost.y + Math.sin(angle) * step));
 
                     if (moveAngleFound !== undefined) {
-                        g.x += Math.cos(moveAngleFound) * step;
-                        g.y += Math.sin(moveAngleFound) * step;
-                    } else if (g.path?.length) {
-                        g.pathIdx = (g.pathIdx + 1) % g.path.length;
+                        ghost.x += Math.cos(moveAngleFound) * step;
+                        ghost.y += Math.sin(moveAngleFound) * step;
+                    } else if (ghost.path?.length) {
+                        ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
                     }
                 }
 
                 // Damage Check
                 if (!state.isInvulnerable && !state.l3Hidden) {
-                    if (Math.hypot(player.x - g.x, player.y - g.y) < player.radius + g.radius) {
+                    if (Math.hypot(player.x - ghost.x, player.y - ghost.y) < player.radius + ghost.radius) {
                         takeDamage();
                     }
                 }
