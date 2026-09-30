@@ -631,6 +631,25 @@ class AudioSynth {
             }
         }
 
+        function updateSanity(delta) {
+            if (state.isRecCameraOn) {
+                state.sanity = Math.max(0, state.sanity - delta * CONFIG.SANITY_DRAIN_PER_SEC);
+            } else {
+                state.sanity = Math.min(100, state.sanity + delta * CONFIG.SANITY_REGEN_PER_SEC * selectedChar.sanityRegen);
+            }
+
+            if (state.sanity < CONFIG.SANITY_SHAKE_THRESHOLD) {
+                canvas.classList.add('shake');
+            } else {
+                canvas.classList.remove('shake');
+            }
+
+            if (state.isInvulnerable) {
+                state.invulnTimer -= delta;
+                if (state.invulnTimer <= 0) state.isInvulnerable = false;
+            }
+        }
+
         function updatePlayerMovement(delta, frameScale) {
             if (!state.l3Hidden) {
                 let dx = 0;
@@ -701,23 +720,7 @@ class AudioSynth {
 
             player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
 
-            // Sanity Engine
-            if (state.isRecCameraOn) {
-                state.sanity = Math.max(0, state.sanity - delta * CONFIG.SANITY_DRAIN_PER_SEC);
-            } else {
-                state.sanity = Math.min(100, state.sanity + delta * CONFIG.SANITY_REGEN_PER_SEC * selectedChar.sanityRegen);
-            }
-
-            if (state.sanity < CONFIG.SANITY_SHAKE_THRESHOLD) {
-                canvas.classList.add('shake');
-            } else {
-                canvas.classList.remove('shake');
-            }
-
-            if (state.isInvulnerable) {
-                state.invulnTimer -= delta;
-                if (state.invulnTimer <= 0) state.isInvulnerable = false;
-            }
+            updateSanity(delta);
 
             // Ghosts AI & Flashlight Slowdown Mechanics
             ghosts.forEach(ghost => {
