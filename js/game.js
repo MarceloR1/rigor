@@ -982,9 +982,25 @@ class AudioSynth {
             loadLevel(state.currentLevel);
         }
 
-        function updateHUD() {
-            const hud = document.getElementById('hud');
-            const candleContainer = document.getElementById('candles-container');
+        const hudElements = {
+            hud: document.getElementById('hud'),
+            candleContainer: document.getElementById('candles-container'),
+            candlesNum: document.getElementById('candles-num'),
+            sanityBar: document.getElementById('sanity-bar'),
+            sanityVal: document.getElementById('sanity-val'),
+            sanityTrack: document.getElementById('sanity-track'),
+            batteryBar: document.getElementById('battery-bar'),
+            batteryVal: document.getElementById('battery-val'),
+            batteryTrack: document.getElementById('battery-track'),
+            hudKeys: document.getElementById('hud-keys'),
+            sensorLabel: document.getElementById('hud-threat-label'),
+            sensorCopy: document.getElementById('hud-threat-copy'),
+            contact: document.getElementById('hud-radar-contact'),
+        };
+
+        function updateHUDStats() {
+            const { hud, candleContainer, candlesNum, sanityBar, sanityVal, sanityTrack, batteryBar, batteryVal, batteryTrack, hudKeys } = hudElements;
+
             if (candleContainer && renderedCandleCount !== state.candles) {
                 const icons = [];
                 for (let i = 0; i < 3; i++) {
@@ -998,19 +1014,19 @@ class AudioSynth {
                 renderedCandleCount = state.candles;
             }
 
-            document.getElementById('candles-num').innerText = `${state.candles}/3`;
+            candlesNum.innerText = `${state.candles}/3`;
             const sanity = Math.round(Math.max(0, Math.min(100, state.sanity)));
             const battery = Math.round(Math.max(0, Math.min(100, (state.battery / state.maxBattery) * 100)));
-            document.getElementById('sanity-bar').style.width = `${sanity}%`;
-            document.getElementById('sanity-val').innerText = `${sanity}%`;
-            document.getElementById('sanity-track').setAttribute('aria-valuenow', String(sanity));
+            sanityBar.style.width = `${sanity}%`;
+            sanityVal.innerText = `${sanity}%`;
+            sanityTrack.setAttribute('aria-valuenow', String(sanity));
 
-            document.getElementById('battery-bar').style.width = `${battery}%`;
-            document.getElementById('battery-val').innerText = `${battery}%`;
-            document.getElementById('battery-track').setAttribute('aria-valuenow', String(battery));
+            batteryBar.style.width = `${battery}%`;
+            batteryVal.innerText = `${battery}%`;
+            batteryTrack.setAttribute('aria-valuenow', String(battery));
 
             const keysCount = Object.values(state.keysCollected).filter(Boolean).length;
-            document.getElementById('hud-keys').innerText = `${keysCount}/3`;
+            hudKeys.innerText = `${keysCount}/3`;
             document.querySelectorAll('[data-key-slot]').forEach((slot) => {
                 const collected = state.keysCollected[slot.dataset.keySlot];
                 slot.classList.toggle('is-collected', collected);
@@ -1021,10 +1037,10 @@ class AudioSynth {
             hud.classList.toggle('sanity-critical', sanity <= 25);
             hud.classList.toggle('battery-low', battery <= 20);
             hud.classList.toggle('camera-active', state.isRecCameraOn);
+        }
 
-            const sensorLabel = document.getElementById('hud-threat-label');
-            const sensorCopy = document.getElementById('hud-threat-copy');
-            const contact = document.getElementById('hud-radar-contact');
+        function updateRadar() {
+            const { hud, sensorLabel, sensorCopy, contact } = hudElements;
             const visibleGhosts = ghosts
                 .filter((ghost) => !ghost.invisible || state.isRecCameraOn)
                 .map((ghost) => ({ ghost, distance: Math.hypot(ghost.x - player.x, ghost.y - player.y) }))
@@ -1082,6 +1098,11 @@ class AudioSynth {
                     sensorCopy.innerHTML = state.isRecCameraOn ? 'BARRIDO UV ACTIVO <span>·</span> SIN CONTACTO' : 'BARRIDO ACTIVO <span>·</span> SIN CONTACTO';
                 }
             }
+        }
+
+        function updateHUD() {
+            updateHUDStats();
+            updateRadar();
         }
 
         function render() {
