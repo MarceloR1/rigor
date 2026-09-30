@@ -709,20 +709,7 @@ class AudioSynth {
             document.getElementById('breath-pointer').style.left = `${state.l3BreathPos}%`;
         }
 
-        function update(delta) {
-            if (state.isPaused || !document.getElementById('safe-modal').classList.contains('hidden')) return;
-            animTime += delta;
-            const frameScale = delta * 60;
-
-            updateCamera(delta);
-
-            const playerMoving = updatePlayerMovement(delta, frameScale);
-
-            player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-
-            updateSanity(delta);
-
-            // Ghosts AI & Flashlight Slowdown Mechanics
+        function updateGhostAI(delta, frameScale, playerMoving) {
             ghosts.forEach(ghost => {
                 const distance = Math.hypot(player.x - ghost.x, player.y - ghost.y);
                 const angleToGhost = Math.atan2(ghost.y - player.y, ghost.x - player.x);
@@ -924,6 +911,22 @@ class AudioSynth {
                     }
                 }
             });
+        }
+
+        function update(delta) {
+            if (state.isPaused || !document.getElementById('safe-modal').classList.contains('hidden')) return;
+            animTime += delta;
+            const frameScale = delta * 60;
+
+            updateCamera(delta);
+
+            const playerMoving = updatePlayerMovement(delta, frameScale);
+
+            player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+
+            updateSanity(delta);
+
+            updateGhostAI(delta, frameScale, playerMoving);
 
             hudRefreshTimer += delta;
             if (hudRefreshTimer >= CONFIG.HUD_REFRESH_INTERVAL) {
