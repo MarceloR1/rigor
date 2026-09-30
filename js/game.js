@@ -500,6 +500,65 @@ class AudioSynth {
             stalker.lungeCooldown = 0.7;
         }
 
+        const INTERACTION_HANDLERS = {
+            anomaly() {
+                audio.playPickup();
+                state.keysCollected[1] = true;
+                showPrompt("¡Anomalía identificada! Has purificado el pasillo y obtenido la LLAVE 1.");
+                updateHUD();
+            },
+            l1_door() {
+                if (state.keysCollected[1]) {
+                    loadLevel(2);
+                } else {
+                    showPrompt("La puerta está atrancada. Encuentra la anomalía en el pasillo.");
+                }
+            },
+            safe() {
+                if (state.keysCollected[2]) {
+                    showPrompt("La caja fuerte ya fue abierta.");
+                } else {
+                    openSafeModal();
+                }
+            },
+            wardrobe() {
+                state.l3Hidden = true;
+                ghosts.forEach((ghost) => {
+                    ghost.lastKnown.x = player.x;
+                    ghost.lastKnown.y = player.y;
+                    if (ghost.type === 'screamer' && ['windup', 'charge'].includes(ghost.aiState)) {
+                        ghost.aiState = 'recover';
+                        ghost.stateTimer = 0.9;
+                    }
+                });
+                document.getElementById('breath-minigame').classList.remove('hidden');
+            },
+            altar(item) {
+                if (item.idx === state.l3AltarSeq[state.l3AltarProgress]) {
+                    state.l3AltarProgress++;
+                    audio.playPickup();
+                    showPrompt(`Altar activado (${state.l3AltarProgress}/3).`);
+                    if (state.l3AltarProgress >= 3) {
+                        state.keysCollected[3] = true;
+                        state.l3FinalChase = true;
+                        showPrompt("¡LLAVE 3 OBTENIDA! EL ESPECTRO FINAL SE HA DESATADO. ¡CORRE A LA SALIDA!");
+                        ghosts[0].speed = CONFIG.SCREAMER_FINAL_SPEED;
+                        updateHUD();
+                    }
+                } else {
+                    state.l3AltarProgress = 0;
+                    showPrompt("Secuencia incorrecta. La llama del altar se ha apagado.");
+                }
+            },
+            chapel_exit() {
+                if (state.keysCollected[3]) {
+                    triggerVictory();
+                } else {
+                    showPrompt("Activa la secuencia de los 3 altares para liberar la puerta.");
+                }
+            }
+        };
+
         function checkInteraction() {
             if (state.l3Hidden) {
                 state.l3Hidden = false;
@@ -510,57 +569,7 @@ class AudioSynth {
             interactables.forEach(item => {
                 const dist = Math.hypot(player.x - item.x, player.y - item.y);
                 if (dist < item.radius + 28) {
-                    if (item.type === 'anomaly') {
-                        audio.playPickup();
-                        state.keysCollected[1] = true;
-                        showPrompt("¡Anomalía identificada! Has purificado el pasillo y obtenido la LLAVE 1.");
-                        updateHUD();
-                    } else if (item.type === 'l1_door') {
-                        if (state.keysCollected[1]) {
-                            loadLevel(2);
-                        } else {
-                            showPrompt("La puerta está atrancada. Encuentra la anomalía en el pasillo.");
-                        }
-                    } else if (item.type === 'safe') {
-                        if (state.keysCollected[2]) {
-                            showPrompt("La caja fuerte ya fue abierta.");
-                        } else {
-                            openSafeModal();
-                        }
-                    } else if (item.type === 'wardrobe') {
-                        state.l3Hidden = true;
-                        ghosts.forEach((ghost) => {
-                            ghost.lastKnown.x = player.x;
-                            ghost.lastKnown.y = player.y;
-                            if (ghost.type === 'screamer' && ['windup', 'charge'].includes(ghost.aiState)) {
-                                ghost.aiState = 'recover';
-                                ghost.stateTimer = 0.9;
-                            }
-                        });
-                        document.getElementById('breath-minigame').classList.remove('hidden');
-                    } else if (item.type === 'altar') {
-                        if (item.idx === state.l3AltarSeq[state.l3AltarProgress]) {
-                            state.l3AltarProgress++;
-                            audio.playPickup();
-                            showPrompt(`Altar activado (${state.l3AltarProgress}/3).`);
-                            if (state.l3AltarProgress >= 3) {
-                                state.keysCollected[3] = true;
-                                state.l3FinalChase = true;
-                                showPrompt("¡LLAVE 3 OBTENIDA! EL ESPECTRO FINAL SE HA DESATADO. ¡CORRE A LA SALIDA!");
-                                ghosts[0].speed = CONFIG.SCREAMER_FINAL_SPEED;
-                                updateHUD();
-                            }
-                        } else {
-                            state.l3AltarProgress = 0;
-                            showPrompt("Secuencia incorrecta. La llama del altar se ha apagado.");
-                        }
-                    } else if (item.type === 'chapel_exit') {
-                        if (state.keysCollected[3]) {
-                            triggerVictory();
-                        } else {
-                            showPrompt("Activa la secuencia de los 3 altares para liberar la puerta.");
-                        }
-                    }
+                    INTERACTION_HANDLERS[item.type]?.(item);
                 }
             });
         }
