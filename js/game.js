@@ -55,64 +55,50 @@ class AudioSynth {
                 }
             }
 
-            playClick() {
+            playTone({ type, freqStart, freqRamps, volume, gainEnd, duration }) {
                 if (!this.ctx) return;
+                const now = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(600, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.05);
-                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+                osc.type = type;
+                osc.frequency.setValueAtTime(freqStart, now);
+                freqRamps.forEach(({ value, time, method }) => {
+                    osc.frequency[method](value, now + time);
+                });
+                gain.gain.setValueAtTime(volume, now);
+                gain.gain.exponentialRampToValueAtTime(gainEnd, now + duration);
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.start();
-                osc.stop(this.ctx.currentTime + 0.05);
+                osc.stop(now + duration);
+            }
+
+            playClick() {
+                this.playTone({
+                    type: 'sine', freqStart: 600, volume: 0.1, gainEnd: 0.01, duration: 0.05,
+                    freqRamps: [{ value: 200, time: 0.05, method: 'exponentialRampToValueAtTime' }]
+                });
             }
 
             playFootstep() {
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(80, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.08);
-                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.08);
+                this.playTone({
+                    type: 'triangle', freqStart: 80, volume: 0.08, gainEnd: 0.001, duration: 0.08,
+                    freqRamps: [{ value: 30, time: 0.08, method: 'exponentialRampToValueAtTime' }]
+                });
             }
 
             playJumpscare() {
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
-                osc.frequency.linearRampToValueAtTime(750, this.ctx.currentTime + 0.4);
-                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.5);
+                this.playTone({
+                    type: 'sawtooth', freqStart: 120, volume: 0.4, gainEnd: 0.01, duration: 0.5,
+                    freqRamps: [{ value: 750, time: 0.4, method: 'linearRampToValueAtTime' }]
+                });
             }
 
             playPickup() {
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
-                osc.frequency.setValueAtTime(659.25, this.ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.3);
+                this.playTone({
+                    type: 'sine', freqStart: 523.25, volume: 0.2, gainEnd: 0.01, duration: 0.3,
+                    freqRamps: [{ value: 659.25, time: 0.1, method: 'setValueAtTime' }]
+                });
             }
         }
 
