@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Rigor Mortis: terror psicológico 3D en tres niveles. Elige a tu investigador y sobrevive.">
+    <meta name="theme-color" content="#030407">
+    <title>Rigor Mortis | Terror psicológico 3D</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="text-gray-200">
+
+    <!-- Main Game Canvas -->
+    <canvas id="game-canvas" aria-label="Escenario del juego Rigor Mortis"></canvas>
+
+    <!-- Camera REC Overlay -->
+    <div id="rec-ui" class="rec-overlay hidden border-8 border-emerald-900/40">
+        <div class="absolute top-6 left-6 flex items-center gap-3 bg-black/85 p-3 rounded-lg border border-emerald-500/50 backdrop-blur-md">
+            <span class="w-4 h-4 rounded-full bg-red-600 animate-ping"></span>
+            <span class="text-red-500 font-bold tracking-widest text-lg">● REC</span>
+            <span class="text-emerald-400 text-xs font-mono border border-emerald-700/50 px-2 py-0.5 rounded">ESPECTRO UV</span>
+        </div>
+        <div class="absolute top-6 right-6 text-right bg-black/85 p-3 rounded-lg border border-emerald-500/50 backdrop-blur-md">
+            <p class="text-emerald-400 font-mono text-xs font-bold"><i class="fa-solid fa-eye mr-1"></i> SENSOR SPECTRUM ACTIVO</p>
+            <p class="text-gray-300 font-mono text-[11px]">Revela tinta UV y espectros ocultos</p>
+        </div>
+        <div class="absolute bottom-6 left-6 text-emerald-400/90 text-xs font-mono bg-black/85 px-3 py-1.5 rounded border border-emerald-800">
+            CÁMARA DE CAMPO | ISO 6400
+        </div>
+    </div>
+
+    <!-- HUD Overlay -->
+    <div id="hud" class="absolute inset-0 pointer-events-none z-30 p-4 md:p-6 flex flex-col justify-between hidden">
+        <!-- Top Bar: Level, Candles, Battery, Sanity -->
+        <div class="flex justify-between items-start gap-4">
+            <div class="bg-black/90 border-2 border-red-900/80 p-3 md:p-4 rounded-xl backdrop-blur-md shadow-2xl max-w-sm md:max-w-md">
+                <h2 id="hud-level-title" class="text-red-500 font-black tracking-widest uppercase text-sm md:text-base drop-shadow">NIVEL 1: EL PASILLO</h2>
+                <p id="hud-level-desc" class="text-[11px] md:text-xs text-gray-300 mt-1 leading-relaxed">Encuentra la anomalía en el pasillo que se repite para revelar la llave.</p>
+                <div class="mt-2.5 flex items-center gap-2 md:gap-3 text-xs font-mono flex-wrap">
+                    <span class="text-yellow-400 font-bold bg-yellow-950/70 border border-yellow-700/60 px-2.5 py-1 rounded">
+                        <i class="fa-solid fa-key mr-1"></i> LLAVES: <span id="hud-keys" class="text-white">0/3</span>
+                    </span>
+                    <span id="hud-extra-info" class="text-gray-200 bg-gray-900/90 border border-gray-700 px-2.5 py-1 rounded">
+                        VUELTA BUCLE: <span id="hud-loop-count" class="text-red-400 font-bold">1</span>
+                    </span>
+                </div>
+                <ol id="hud-key-track" class="hud-key-track" aria-label="Progreso de las tres llaves">
+                    <li class="key-slot" data-key-slot="1"><span>01</span><i class="fa-solid fa-key"></i></li>
+                    <li class="key-slot" data-key-slot="2"><span>02</span><i class="fa-solid fa-key"></i></li>
+                    <li class="key-slot" data-key-slot="3"><span>03</span><i class="fa-solid fa-key"></i></li>
+                </ol>
+            </div>
+
+            <aside id="hud-radar" class="hud-radar" aria-label="Sensor de espectros">
+                <div class="radar-heading"><span><i class="fa-solid fa-satellite-dish"></i> SENSOR</span><span id="hud-threat-label">EN ESPERA</span></div>
+                <div class="radar-scope" aria-hidden="true">
+                    <span class="radar-ring radar-ring-outer"></span>
+                    <span class="radar-ring radar-ring-middle"></span>
+                    <span class="radar-ring radar-ring-inner"></span>
+                    <span class="radar-axis radar-axis-x"></span>
+                    <span class="radar-axis radar-axis-y"></span>
+                    <span class="radar-sweep"></span>
+                    <span class="radar-player"></span>
+                    <span id="hud-radar-contact" class="radar-contact hidden"></span>
+                </div>
+                <p id="hud-threat-copy">BARRIDO ACTIVO <span>·</span> SIN CONTACTO</p>
+            </aside>
+
+            <!-- Stats Container -->
+            <div id="hud-vitals" class="hud-vitals bg-black/90 border-2 border-gray-800 p-3 md:p-4 rounded-xl backdrop-blur-md space-y-2.5 w-52 md:w-64 shadow-2xl">
+                <!-- Velas (Lives) -->
+                <div>
+                    <div class="text-[11px] md:text-xs text-amber-400 font-bold mb-1 flex justify-between tracking-wider">
+                        <span><i class="fa-solid fa-fire mr-1"></i> VELAS</span>
+                        <span id="candles-num" class="text-amber-300">3/3</span>
+                    </div>
+                    <div id="candles-container" class="flex gap-2 md:gap-3 text-amber-500 text-xl md:text-2xl justify-center bg-gray-950/90 p-1.5 rounded-lg border border-amber-900/50">
+                        <i class="fa-solid fa-fire animate-pulse filter drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]"></i>
+                        <i class="fa-solid fa-fire animate-pulse filter drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]"></i>
+                        <i class="fa-solid fa-fire animate-pulse filter drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]"></i>
+                    </div>
+                </div>
+
+                <!-- Sanity Bar -->
+                <div>
+                    <div class="flex justify-between text-[11px] md:text-xs mb-1 font-bold">
+                        <span class="text-blue-400"><i class="fa-solid fa-brain mr-1"></i> CORDURA</span>
+                        <span id="sanity-val" class="text-blue-300">100%</span>
+                    </div>
+                    <div id="sanity-track" class="hud-meter-track w-full bg-gray-950 h-2.5 md:h-3 rounded-full overflow-hidden border border-blue-900/80 p-0.5" role="progressbar" aria-label="Cordura" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+                        <div id="sanity-bar" class="bg-gradient-to-r from-blue-600 to-cyan-400 h-full w-full rounded-full transition-all duration-200"></div>
+                    </div>
+                </div>
+
+                <!-- Camera Battery Bar -->
+                <div>
+                    <div class="flex justify-between text-[11px] md:text-xs mb-1 font-bold">
+                        <span class="text-emerald-400"><i class="fa-solid fa-video mr-1"></i> BATERÍA</span>
+                        <span id="battery-val" class="text-emerald-300">100%</span>
+                    </div>
+                    <div id="battery-track" class="hud-meter-track w-full bg-gray-950 h-2.5 md:h-3 rounded-full overflow-hidden border border-emerald-900/80 p-0.5" role="progressbar" aria-label="Batería de cámara" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+                        <div id="battery-bar" class="bg-gradient-to-r from-emerald-600 to-green-400 h-full w-full rounded-full transition-all duration-200"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Tooltips & Interaction Prompts -->
+        <div id="interaction-prompt" class="self-center bg-black/90 border-2 border-amber-500 text-amber-200 px-6 py-3 rounded-lg text-xs md:text-sm font-mono tracking-widest hidden shadow-2xl animate-bounce">
+            [E] INTERACTUAR
+        </div>
+
+        <!-- Hide Breath Minigame Modal -->
+        <div id="breath-minigame" class="self-center bg-black/95 border-2 border-emerald-500 p-4 md:p-5 rounded-xl text-center hidden pointer-events-auto shadow-2xl max-w-xs md:max-w-sm">
+            <p class="text-emerald-400 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">
+                <i class="fa-solid fa-mask-ventilator mr-1"></i> ESCONDIDO EN EL ARMARIO
+            </p>
+            <p class="text-gray-300 text-[11px] md:text-xs mb-3">Mantén [ESPACIO] para contener la respiración mientras la aguja cruza la ZONA VERDE.</p>
+            <div class="w-64 md:w-72 h-5 md:h-6 bg-gray-950 border-2 border-gray-700 rounded-full relative overflow-hidden mx-auto shadow-inner">
+                <div id="breath-target-zone" class="absolute top-0 bottom-0 bg-emerald-500/50 border-x-2 border-emerald-400"></div>
+                <div id="breath-pointer" class="absolute top-0 bottom-0 w-3 bg-white shadow-[0_0_10px_#ffffff]"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Controls Bar -->
+        <div class="hud-controls flex justify-between items-end text-[11px] md:text-xs text-gray-300 bg-black/90 p-3 rounded-xl border border-gray-800 backdrop-blur-md">
+            <div>
+                <span class="text-amber-400 font-bold">WASD</span> Moverse <span class="control-separator">/</span> <span class="text-amber-400 font-bold">RATÓN</span> Apuntar <span class="control-separator">/</span> <span class="text-amber-400 font-bold">MANTENER ESPACIO</span> Cámara UV <span class="control-separator">/</span> <span class="text-amber-400 font-bold">E</span> Interactuar <span class="control-separator">/</span> <span class="text-amber-400 font-bold">P</span> Pausa
+            </div>
+            <div id="character-badge" class="text-red-400 font-bold uppercase tracking-wider border border-red-900/60 px-2.5 py-1 rounded bg-red-950/50">
+                PERSONAJE: EL PERIODISTA
+            </div>
+        </div>
+    </div>
+
+    <!-- Safe Keypad Modal (Level 2 Morgue) -->
+    <div id="safe-modal" class="absolute inset-0 bg-black/85 backdrop-blur-sm z-40 flex items-center justify-center hidden pointer-events-auto">
+        <div class="bg-gray-900 border-2 border-red-900/90 p-6 rounded-2xl w-80 shadow-2xl text-center space-y-4">
+            <h3 class="text-red-500 font-black uppercase tracking-widest text-lg"><i class="fa-solid fa-vault mr-2"></i>CAJA FUERTE MORGUE</h3>
+            <p class="text-gray-300 text-xs">Introduce el código de 4 dígitos visto en la tinta UV con la cámara REC.</p>
+            <div id="safe-display" class="bg-black border-2 border-emerald-600/80 text-emerald-400 text-3xl font-mono p-3 rounded-lg tracking-widest h-14 flex items-center justify-center shadow-inner">
+                ----
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+                <button type="button" class="keypad-btn" data-safe-digit="1">1</button>
+                <button type="button" class="keypad-btn" data-safe-digit="2">2</button>
+                <button type="button" class="keypad-btn" data-safe-digit="3">3</button>
+                <button type="button" class="keypad-btn" data-safe-digit="4">4</button>
+                <button type="button" class="keypad-btn" data-safe-digit="5">5</button>
+                <button type="button" class="keypad-btn" data-safe-digit="6">6</button>
+                <button type="button" class="keypad-btn" data-safe-digit="7">7</button>
+                <button type="button" class="keypad-btn" data-safe-digit="8">8</button>
+                <button type="button" class="keypad-btn" data-safe-digit="9">9</button>
+                <button type="button" class="keypad-btn text-red-400" data-safe-action="clear">C</button>
+                <button type="button" class="keypad-btn" data-safe-digit="0">0</button>
+                <button type="button" class="keypad-btn text-emerald-400" data-safe-action="submit"><i class="fa-solid fa-check"></i></button>
+            </div>
+            <button type="button" data-safe-action="close" class="text-xs text-gray-400 hover:text-white underline mt-2">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Character Selection Screen -->
+    <div id="character-select-screen" class="main-menu">
+        <div class="menu-grain" aria-hidden="true"></div>
+        <div class="menu-layout">
+            <header class="menu-topline">
+                <a class="wordmark" href="#menu" aria-label="Rigor Mortis, inicio"><span class="wordmark-mark">RM</span> ARCHIVO DE CAMPO <span class="wordmark-divider">/</span> CASO 001</a>
+                <span class="system-status"><span class="status-light"></span> SISTEMA EN LÍNEA <span class="system-version">BUILD 0.9.4</span></span>
+            </header>
+
+            <main class="menu-main" id="menu">
+                <section class="menu-intro" aria-labelledby="game-title">
+                    <p class="eyebrow"><span>01</span> INVESTIGACIÓN NOCTURNA <span class="eyebrow-line"></span></p>
+                    <h1 id="game-title">RIGOR<br><span>MORTIS</span></h1>
+                    <p class="menu-subtitle">La última grabación<br>no debía existir.</p>
+                    <div class="menu-brief">
+                        <span class="brief-label">OBJETIVO DE MISIÓN</span>
+                        <p>Encuentra las tres llaves. No confíes en lo que ves. La cámara revela lo que la oscuridad esconde.</p>
+                    </div>
+                    <div class="menu-controls" aria-label="Controles de PC">
+                        <span class="brief-label">CONTROLES</span>
+                        <div class="key-guide"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Moverse</span></div>
+                        <div class="key-guide"><kbd class="key-wide">RATÓN</kbd><span>Apuntar linterna</span></div>
+                        <div class="key-guide"><kbd class="key-wide">ESPACIO</kbd><span>Mantener cámara UV</span></div>
+                        <div class="key-guide"><kbd>E</kbd><span>Interactuar</span><kbd>P</kbd><span>Pausa</span></div>
+                    </div>
+                </section>
+
+                <section class="roster" aria-labelledby="roster-title">
+                    <div class="roster-heading">
+                        <div><p class="eyebrow"><span>SELECCIÓN</span> / PERSONAL</p><h2 id="roster-title">Elige a tu investigador</h2></div>
+                        <span class="roster-count">03 DISPONIBLES</span>
+                    </div>
+
+                    <div class="character-list" role="group" aria-label="Investigadores">
+                        <button type="button" data-character="periodista" aria-pressed="true" class="character-card is-selected">
+                            <span class="character-index">01</span><span class="character-icon"><i class="fa-solid fa-camera"></i></span>
+                            <span class="character-copy"><span class="character-name">El Periodista</span><span class="character-detail">Equipo modificado para documentar lo imposible.</span><span class="character-perk"><i class="fa-solid fa-battery-three-quarters"></i> Batería de cámara ampliada</span></span>
+                            <span class="character-select-mark"><i class="fa-solid fa-check"></i></span>
+                        </button>
+                        <button type="button" data-character="enfermera" aria-pressed="false" class="character-card">
+                            <span class="character-index">02</span><span class="character-icon"><i class="fa-solid fa-user-nurse"></i></span>
+                            <span class="character-copy"><span class="character-name">La Enfermera</span><span class="character-detail">Ha visto demasiado para perder la calma.</span><span class="character-perk perk-blue"><i class="fa-solid fa-brain"></i> Recuperación mental acelerada</span></span>
+                            <span class="character-select-mark"><i class="fa-solid fa-check"></i></span>
+                        </button>
+                        <button type="button" data-character="sacerdote" aria-pressed="false" class="character-card">
+                            <span class="character-index">03</span><span class="character-icon"><i class="fa-solid fa-cross"></i></span>
+                            <span class="character-copy"><span class="character-name">El Sacerdote</span><span class="character-detail">Su presencia perturba a los espectros cercanos.</span><span class="character-perk perk-gold"><i class="fa-solid fa-eye"></i> Presencia que frena espectros</span></span>
+                            <span class="character-select-mark"><i class="fa-solid fa-check"></i></span>
+                        </button>
+                    </div>
+
+                    <div class="launch-row">
+                        <p><span class="status-light status-light-amber"></span> PROGRESO LOCAL <strong>0 / 3 LLAVES</strong></p>
+                        <button type="button" id="start-game" class="launch-button"><span>INICIAR INVESTIGACIÓN</span><i class="fa-solid fa-arrow-right"></i><kbd>ENTER</kbd></button>
+                    </div>
+                </section>
+            </main>
+            <footer class="menu-footer"><span>RIGOR MORTIS <span class="footer-muted">/ TERROR PSICOLÓGICO</span></span><span>UNA INVESTIGACIÓN EN TRES ACTOS <span class="footer-muted">·</span> AUDIO RECOMENDADO</span></footer>
+        </div>
+    </div>
+
+    <!-- Pause Screen -->
+    <div id="pause-screen" class="absolute inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center hidden">
+        <h2 class="text-5xl font-black text-red-600 tracking-widest uppercase mb-4">JUEGO EN PAUSA</h2>
+        <p class="text-gray-300 text-sm mb-6 font-mono">Presiona [P] o [ESC] para reanudar la investigación.</p>
+        <button type="button" id="pause-resume" class="px-8 py-3 bg-red-800 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-widest rounded-lg shadow-lg transition-transform hover:scale-105">REANUDAR</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center hidden">
+        <h2 class="text-6xl font-black text-red-700 tracking-widest uppercase mb-3 drop-shadow-[0_0_20px_rgba(220,38,38,0.8)]">RIGOR MORTIS</h2>
+        <p class="text-gray-300 text-sm max-w-md mb-8 leading-relaxed">Tus 3 velas se han apagado. La rigidez cadavérica te reclama en las sombras del edificio.</p>
+        <button type="button" id="game-over-restart" class="px-8 py-3.5 bg-red-800 hover:bg-red-700 text-white font-bold tracking-widest uppercase rounded-lg shadow-2xl transition-transform hover:scale-105">REINICIAR NIVEL</button>
+    </div>
+
+    <!-- Victory Screen -->
+    <div id="victory-screen" class="absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center hidden">
+        <h2 class="text-5xl font-black text-emerald-500 tracking-widest uppercase mb-2">¡HAS ESCAPADO!</h2>
+        <p class="text-gray-300 text-sm max-w-md mb-6">Has obtenido las 3 llaves y cruzado la puerta principal de la Capilla.</p>
+        
+        <div class="bg-gray-900/90 border-2 border-emerald-800 p-6 rounded-xl w-80 text-left space-y-3 mb-6 text-xs font-mono shadow-2xl">
+            <div class="flex justify-between"><span>Puntos por Llaves:</span> <span id="score-keys" class="text-emerald-400 font-bold">1500</span></div>
+            <div class="flex justify-between"><span>Bonus Batería Restante:</span> <span id="score-battery" class="text-emerald-400 font-bold">500</span></div>
+            <div class="flex justify-between"><span>Bonus Velas Conservadas:</span> <span id="score-candles" class="text-emerald-400 font-bold">900</span></div>
+            <hr class="border-gray-800 my-2">
+            <div class="flex justify-between text-sm font-bold text-white"><span>PUNTUACIÓN TOTAL:</span> <span id="score-total" class="text-emerald-400 text-base">2900</span></div>
+            <div class="flex justify-between text-xs text-amber-400 mt-2"><span>Récord Guardado:</span> <span id="score-record" class="text-yellow-400 font-bold">2900</span></div>
+        </div>
+
+        <button type="button" id="victory-menu" class="px-8 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold tracking-widest uppercase rounded-lg shadow-2xl transition-transform hover:scale-105">VOLVER AL MENÚ PRINCIPAL</button>
+    </div>
+
+    <script type="module" src="js/game.js"></script>
+</body>
+</html>
