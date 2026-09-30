@@ -1,5 +1,49 @@
 const { GameRenderer3D } = await import('./renderer3d.js');
 
+const CONFIG = {
+    FLASHLIGHT_ANGLE: 0.48,
+    FLASHLIGHT_RANGE: 390,
+    BATTERY_DRAIN_PER_SEC: 14,
+    SANITY_DRAIN_PER_SEC: 5,
+    SANITY_REGEN_PER_SEC: 3,
+    SANITY_SHAKE_THRESHOLD: 30,
+    INVULN_DURATION: 2.0,
+    FOOTSTEP_INTERVAL: 0.35,
+    PROMPT_DURATION: 3200,
+    HUD_REFRESH_INTERVAL: 0.1,
+    RADAR_RANGE: 360,
+    RADAR_CRITICAL_DIST: 125,
+    RADAR_WARNING_DIST: 245,
+    MAX_CANDLES: 3,
+    KEYS_TOTAL: 3,
+    STALKER_FLEE_TIME: 0.35,
+    STALKER_REPOSITION_TIME: 0.85,
+    STALKER_WINDUP_TIME: 0.62,
+    STALKER_LUNGE_TIME: 0.48,
+    STALKER_LUNGE_COOLDOWN: 3.1,
+    STALKER_RECOVER_TIME: 0.7,
+    STALKER_DETECT_RANGE: 185,
+    CRAWLER_SENSE_RANGE: 340,
+    CRAWLER_MOVEMENT_SENSE: 235,
+    CRAWLER_CLOSE_RANGE: 82,
+    CRAWLER_LUNGE_RANGE: 68,
+    CRAWLER_LUNGE_TIME: 0.36,
+    CRAWLER_LUNGE_COOLDOWN: 5.2,
+    CRAWLER_SEARCH_TIME: 3.8,
+    CRAWLER_SEARCH_MOVE_TIME: 1.15,
+    SCREAMER_WINDUP_TIME: 0.92,
+    SCREAMER_CHARGE_TIME: 0.72,
+    SCREAMER_CHARGE_COOLDOWN: 3.8,
+    SCREAMER_RECOVER_TIME: 1.35,
+    SCREAMER_STUN_TIME: 0.9,
+    SCREAMER_DETECT_RANGE: 310,
+    SCREAMER_FINAL_SPEED: 4.2,
+    BREATH_SPEED: 66,
+    SCORE_PER_KEY: 500,
+    SCORE_BATTERY_MULTIPLIER: 5,
+    SCORE_PER_CANDLE: 300,
+};
+
 class GDDAudioSynth {
             constructor() {
                 this.ctx = null;
@@ -518,7 +562,7 @@ class GDDAudioSynth {
                                 state.keysCollected[3] = true;
                                 state.l3FinalChase = true;
                                 showPrompt("¡LLAVE 3 OBTENIDA! EL ESPECTRO FINAL SE HA DESATADO. ¡CORRE A LA SALIDA!");
-                                ghosts[0].speed = 4.2;
+                                ghosts[0].speed = CONFIG.SCREAMER_FINAL_SPEED;
                                 updateHUD();
                             }
                         } else {
@@ -579,7 +623,7 @@ class GDDAudioSynth {
             const el = document.getElementById('interaction-prompt');
             el.innerText = txt;
             el.classList.remove('hidden');
-            setTimeout(() => el.classList.add('hidden'), 3200);
+            setTimeout(() => el.classList.add('hidden'), CONFIG.PROMPT_DURATION);
         }
 
         function update(delta) {
@@ -590,7 +634,7 @@ class GDDAudioSynth {
             // Camera REC Toggle via Spacebar
             if (keys['Space'] && state.battery > 0 && !state.l3Hidden) {
                 state.isRecCameraOn = true;
-                state.battery = Math.max(0, state.battery - delta * 14 * selectedChar.drainRate);
+                state.battery = Math.max(0, state.battery - delta * CONFIG.BATTERY_DRAIN_PER_SEC * selectedChar.drainRate);
                 document.getElementById('rec-ui').classList.remove('hidden');
             } else {
                 state.isRecCameraOn = false;
@@ -628,7 +672,7 @@ class GDDAudioSynth {
                         playerMoving = true;
 
                         player.stepTimer += delta;
-                        if (player.stepTimer > 0.35) {
+                        if (player.stepTimer > CONFIG.FOOTSTEP_INTERVAL) {
                             audio.playFootstep();
                             player.stepTimer = 0;
                         }
@@ -645,7 +689,7 @@ class GDDAudioSynth {
                 }
             } else {
                 // Breath Minigame in Wardrobe
-                state.l3BreathPos += state.l3BreathDir * 66 * delta;
+                state.l3BreathPos += state.l3BreathDir * CONFIG.BREATH_SPEED * delta;
                 if (state.l3BreathPos > 100 || state.l3BreathPos < 0) state.l3BreathDir *= -1;
                 document.getElementById('breath-pointer').style.left = `${state.l3BreathPos}%`;
             }
@@ -654,12 +698,12 @@ class GDDAudioSynth {
 
             // Sanity Engine
             if (state.isRecCameraOn) {
-                state.sanity = Math.max(0, state.sanity - delta * 5);
+                state.sanity = Math.max(0, state.sanity - delta * CONFIG.SANITY_DRAIN_PER_SEC);
             } else {
-                state.sanity = Math.min(100, state.sanity + delta * 3 * selectedChar.sanityRegen);
+                state.sanity = Math.min(100, state.sanity + delta * CONFIG.SANITY_REGEN_PER_SEC * selectedChar.sanityRegen);
             }
 
-            if (state.sanity < 30) {
+            if (state.sanity < CONFIG.SANITY_SHAKE_THRESHOLD) {
                 canvas.classList.add('shake');
             } else {
                 canvas.classList.remove('shake');
@@ -677,7 +721,7 @@ class GDDAudioSynth {
                 let angleDifference = Math.abs(player.angle - angleToGhost);
                 if (angleDifference > Math.PI) angleDifference = Math.PI * 2 - angleDifference;
                 const hasLineOfSight = hasClearSight(g.x, g.y, player.x, player.y);
-                const inLight = hasLineOfSight && angleDifference < 0.48 && distance < 390;
+                const inLight = hasLineOfSight && angleDifference < CONFIG.FLASHLIGHT_ANGLE && distance < CONFIG.FLASHLIGHT_RANGE;
 
                 g.stateTimer = Math.max(0, (g.stateTimer || 0) - delta);
                 g.lungeCooldown = Math.max(0, (g.lungeCooldown || 0) - delta);
@@ -689,48 +733,48 @@ class GDDAudioSynth {
                 if (g.type === 'stalker') {
                     if (inLight) {
                         g.aiState = 'flee';
-                        g.stateTimer = 0.35;
+                        g.stateTimer = CONFIG.STALKER_FLEE_TIME;
                         g.isFleeing = true;
                     } else if (g.aiState === 'flee' && g.stateTimer <= 0) {
                         g.aiState = 'reposition';
-                        g.stateTimer = 0.85;
+                        g.stateTimer = CONFIG.STALKER_REPOSITION_TIME;
                         g.pathIdx = (g.pathIdx + 1) % g.path.length;
                     } else if (g.aiState === 'reposition' && g.stateTimer <= 0) {
                         g.aiState = 'patrol';
                     } else if (g.aiState === 'windup' && g.stateTimer <= 0) {
                         g.aiState = 'lunge';
-                        g.stateTimer = 0.48;
-                        g.lungeCooldown = 3.1;
+                        g.stateTimer = CONFIG.STALKER_LUNGE_TIME;
+                        g.lungeCooldown = CONFIG.STALKER_LUNGE_COOLDOWN;
                     } else if (g.aiState === 'lunge' && g.stateTimer <= 0) {
                         g.aiState = 'recover';
-                        g.stateTimer = 0.7;
+                        g.stateTimer = CONFIG.STALKER_RECOVER_TIME;
                     } else if (g.aiState === 'recover' && g.stateTimer <= 0) {
                         g.aiState = 'reposition';
                         g.stateTimer = 0.45;
-                    } else if (g.aiState === 'patrol' && hasLineOfSight && distance < 185 && g.lungeCooldown <= 0) {
+                    } else if (g.aiState === 'patrol' && hasLineOfSight && distance < CONFIG.STALKER_DETECT_RANGE && g.lungeCooldown <= 0) {
                         g.lastKnown.x = player.x;
                         g.lastKnown.y = player.y;
                         g.aiState = 'windup';
-                        g.stateTimer = 0.62;
+                        g.stateTimer = CONFIG.STALKER_WINDUP_TIME;
                     }
                 } else if (g.type === 'crawler') {
-                    const canSensePlayer = !state.l3Hidden && distance < 340 &&
-                        ((playerMoving && distance < 235) || (state.isRecCameraOn && hasLineOfSight) || distance < 82);
+                    const canSensePlayer = !state.l3Hidden && distance < CONFIG.CRAWLER_SENSE_RANGE &&
+                        ((playerMoving && distance < CONFIG.CRAWLER_MOVEMENT_SENSE) || (state.isRecCameraOn && hasLineOfSight) || distance < CONFIG.CRAWLER_CLOSE_RANGE);
                     g.hasVisual = canSensePlayer;
                     if (canSensePlayer) {
                         g.lastKnown.x = player.x;
                         g.lastKnown.y = player.y;
-                        g.searchTimer = 3.8;
-                        if (distance < 68 && g.aiState !== 'lunge' && g.lungeCooldown <= 0) {
+                        g.searchTimer = CONFIG.CRAWLER_SEARCH_TIME;
+                        if (distance < CONFIG.CRAWLER_LUNGE_RANGE && g.aiState !== 'lunge' && g.lungeCooldown <= 0) {
                             g.aiState = 'lunge';
-                            g.stateTimer = 0.36;
-                            g.lungeCooldown = 5.2;
+                            g.stateTimer = CONFIG.CRAWLER_LUNGE_TIME;
+                            g.lungeCooldown = CONFIG.CRAWLER_LUNGE_COOLDOWN;
                         } else if (g.aiState !== 'lunge') {
                             g.aiState = 'track';
                         }
                     } else if (g.aiState === 'track' && g.searchTimer <= 0) {
                         g.aiState = 'search';
-                        g.stateTimer = 1.15;
+                        g.stateTimer = CONFIG.CRAWLER_SEARCH_MOVE_TIME;
                         g.pathIdx = (g.pathIdx + 1) % g.path.length;
                     } else if (g.aiState === 'search' && g.stateTimer <= 0) {
                         g.aiState = 'patrol';
@@ -742,28 +786,28 @@ class GDDAudioSynth {
                 } else if (g.type === 'screamer') {
                     if (state.l3Hidden && ['windup', 'charge'].includes(g.aiState)) {
                         g.aiState = 'recover';
-                        g.stateTimer = 0.9;
+                        g.stateTimer = CONFIG.SCREAMER_STUN_TIME;
                     } else if (inLight && (g.aiState === 'windup' || g.aiState === 'charge')) {
                         g.aiState = 'stunned';
-                        g.stateTimer = 0.9;
+                        g.stateTimer = CONFIG.SCREAMER_STUN_TIME;
                         g.lungeCooldown = Math.max(g.lungeCooldown, 1.2);
                     } else if (g.aiState === 'windup' && g.stateTimer <= 0) {
                         g.aiState = 'charge';
-                        g.stateTimer = 0.72;
-                        g.lungeCooldown = 3.8;
+                        g.stateTimer = CONFIG.SCREAMER_CHARGE_TIME;
+                        g.lungeCooldown = CONFIG.SCREAMER_CHARGE_COOLDOWN;
                     } else if (g.aiState === 'charge' && g.stateTimer <= 0) {
                         g.aiState = 'recover';
-                        g.stateTimer = 1.35;
+                        g.stateTimer = CONFIG.SCREAMER_RECOVER_TIME;
                     } else if (g.aiState === 'recover' && g.stateTimer <= 0) {
                         g.aiState = 'patrol';
                     } else if (g.aiState === 'stunned' && g.stateTimer <= 0) {
                         g.aiState = 'recover';
                         g.stateTimer = 1.1;
-                    } else if (!state.l3Hidden && hasLineOfSight && g.aiState === 'patrol' && distance < 310 && g.lungeCooldown <= 0) {
+                    } else if (!state.l3Hidden && hasLineOfSight && g.aiState === 'patrol' && distance < CONFIG.SCREAMER_DETECT_RANGE && g.lungeCooldown <= 0) {
                         g.lastKnown.x = player.x;
                         g.lastKnown.y = player.y;
                         g.aiState = 'windup';
-                        g.stateTimer = 0.92;
+                        g.stateTimer = CONFIG.SCREAMER_WINDUP_TIME;
                     }
                     g.isStunned = inLight || g.aiState === 'stunned';
                 }
@@ -874,16 +918,16 @@ class GDDAudioSynth {
             });
 
             hudRefreshTimer += delta;
-            if (hudRefreshTimer >= 0.1) {
+            if (hudRefreshTimer >= CONFIG.HUD_REFRESH_INTERVAL) {
                 updateHUD();
-                hudRefreshTimer %= 0.1;
+                hudRefreshTimer %= CONFIG.HUD_REFRESH_INTERVAL;
             }
         }
 
         function takeDamage() {
             state.candles--;
             state.isInvulnerable = true;
-            state.invulnTimer = 2.0;
+            state.invulnTimer = CONFIG.INVULN_DURATION;
             audio.playJumpscare();
             triggerScreenShake();
             const hud = document.getElementById('hud');
@@ -918,9 +962,9 @@ class GDDAudioSynth {
             document.getElementById('hud').classList.add('hidden');
             document.getElementById('victory-screen').classList.remove('hidden');
 
-            const keyScore = Object.values(state.keysCollected).filter(Boolean).length * 500;
-            const batScore = Math.round(state.battery * 5);
-            const candleScore = state.candles * 300;
+            const keyScore = Object.values(state.keysCollected).filter(Boolean).length * CONFIG.SCORE_PER_KEY;
+            const batScore = Math.round(state.battery * CONFIG.SCORE_BATTERY_MULTIPLIER);
+            const candleScore = state.candles * CONFIG.SCORE_PER_CANDLE;
             const total = keyScore + batScore + candleScore;
 
             document.getElementById('score-keys').innerText = keyScore;
@@ -935,7 +979,7 @@ class GDDAudioSynth {
         }
 
         function restartCurrentLevel() {
-            state.candles = 3;
+            state.candles = CONFIG.MAX_CANDLES;
             state.sanity = 100;
             state.battery = state.maxBattery;
             state.isPaused = false;
@@ -992,7 +1036,7 @@ class GDDAudioSynth {
                 .map((ghost) => ({ ghost, distance: Math.hypot(ghost.x - player.x, ghost.y - player.y) }))
                 .sort((first, second) => first.distance - second.distance);
             const nearest = visibleGhosts[0];
-            const radarRange = 360;
+            const radarRange = CONFIG.RADAR_RANGE;
             const ghostNames = { stalker: 'ACECHADOR', crawler: 'REPTANTE', screamer: 'GRITÓN' };
 
             hud.dataset.threat = 'clear';
@@ -1006,7 +1050,7 @@ class GDDAudioSynth {
                 contact.classList.toggle('contact-stunned', nearest.ghost.isStunned);
                 contact.setAttribute('aria-hidden', 'false');
 
-                if (nearest.distance < 125) {
+                if (nearest.distance < CONFIG.RADAR_CRITICAL_DIST) {
                     hud.dataset.threat = 'critical';
                     sensorLabel.innerText = `${ghostNames[nearest.ghost.type] ?? 'ESPECTRO'} CERCA`;
                     sensorCopy.innerHTML = nearest.ghost.type === 'stalker'
@@ -1018,7 +1062,7 @@ class GDDAudioSynth {
                                 ? '<strong>EMBESTIDA INMINENTE</strong><span>·</span> INTERRÚMPELO CON UV'
                                 : '<strong>GRITÓN EN CONTACTO</strong><span>·</span> ROMPE DISTANCIA'
                             : '<strong>REPTANTE ENCIMA</strong><span>·</span> MANTÉN LA LUZ';
-                } else if (nearest.distance < 245) {
+                } else if (nearest.distance < CONFIG.RADAR_WARNING_DIST) {
                     hud.dataset.threat = 'warning';
                     sensorLabel.innerText = ghostNames[nearest.ghost.type] ?? 'SEÑAL CERCANA';
                     sensorCopy.innerHTML = nearest.ghost.type === 'crawler'
