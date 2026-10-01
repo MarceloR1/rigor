@@ -95,7 +95,7 @@ function classifySound(s) {
 function buildRunnable(source) {
   let code = source.replace(
     /const\s*\{\s*GameRenderer3D\s*\}\s*=\s*await\s+import\s*\([^)]+\)\s*;/,
-    'const GameRenderer3D = class { constructor(){} resize(){} renderFrame(){} };'
+    'const GameRenderer3D = class { constructor(){this._frames=[];} resize(){} renderFrame(f){this._frames.push(JSON.parse(JSON.stringify(f)));} };'
   );
 
   return `
@@ -123,6 +123,7 @@ function buildRunnable(source) {
     get selectedChar() { return selectedChar; },
     get viewportWidth() { return viewportWidth; },
     get viewportHeight() { return viewportHeight; },
+    get rendererFrames() { return sceneRenderer._frames; },
     audio, loadLevel, update, updateHUD, render,
     checkInteraction, typeSafeDigit, submitSafeCode, clearSafeDisplay,
     closeSafeModal, openSafeModal, showPrompt, triggerVictory,
@@ -237,7 +238,7 @@ function runFrameSimulation(label, script, htmlSource, seed) {
   for (const level of LEVELS) {
     const inst = createInstance(script, htmlSource, seed);
     inst.initGame(level);
-    const stateSnaps = [], hudSnaps = [];
+    const stateSnaps = [], hudSnaps = [], renderSnaps = [];
     const inputRng = seededRandom(seed + level * 1000);
 
     for (let frame = 0; frame < FRAMES; frame++) {
@@ -255,13 +256,18 @@ function runFrameSimulation(label, script, htmlSource, seed) {
       try { inst.game.update(DELTA); }
       catch (e) { results[level] = { error: e.message, frame }; break; }
 
-      if (frame % 100 === 0 || frame === FRAMES - 1)
+      if (frame % 100 === 0 || frame === FRAMES - 1) {
         hudSnaps.push({ frame, hud: captureHUD(inst.doc) });
+        const framesBefore = inst.game.rendererFrames.length;
+        try { inst.game.render(); } catch (_) {}
+        const latestFrame = inst.game.rendererFrames[inst.game.rendererFrames.length - 1];
+        if (latestFrame) renderSnaps.push({ frame, data: latestFrame });
+      }
       if (frame % 500 === 0 || frame === FRAMES - 1)
         stateSnaps.push({ frame, player: inst.game.getPlayer(), ghosts: inst.game.getGhosts(), state: inst.game.getState() });
     }
     if (!results[level]?.error)
-      results[level] = { stateSnaps, hudSnaps, sounds: [...inst.sounds] };
+      results[level] = { stateSnaps, hudSnaps, renderSnaps, sounds: [...inst.sounds] };
   }
   return results;
 }
@@ -893,6 +899,47 @@ console.log(`    Total: ${coveredStates}/${totalStates} states`);
 console.log(cat5Pass ? '\n  ✓ AI COVERAGE MATCHES' : '\n  ✗ AI COVERAGE DIVERGENCE');
 
 // ═════════════════════════════════════════════════════════
+// CATEGORY 6: RENDERER FRAMES
+// ═════════════════════════════════════════════════════════
+
+console.log('\n╔══════════════════════════════════════════════════════════╗');
+console.log('║  CATEGORY 6: RENDERER FRAMES                            ║');
+console.log('╚══════════════════════════════════════════════════════════╝\n');
+
+let cat6Pass = true;
+const RENDER_FIELDS = [
+  'width', 'height', 'followCamera', 'level', 'isRecCameraOn',
+  'isHidden', 'isInvulnerable', 'characterKey', 'anomalyType',
+  'code', 'altarProgress', 'animTime',
+];
+for (const level of LEVELS) {
+  const o = origFrames[level], c = currFrames[level];
+  if (o.error || c.error) { console.log(`  Level ${level}: ERROR`); cat6Pass = false; continue; }
+  const oSnaps = o.renderSnaps || [];
+  const cSnaps = c.renderSnaps || [];
+  if (oSnaps.length === 0 && cSnaps.length === 0) {
+    console.log(`  Level ${level}: no render snapshots captured`);
+    continue;
+  }
+  let rd = 0;
+  for (let i = 0; i < Math.min(oSnaps.length, cSnaps.length); i++) {
+    const od = oSnaps[i].data, cd = cSnaps[i].data;
+    for (const f of RENDER_FIELDS) {
+      if (typeof od[f] === 'number' && Math.abs(od[f] - (cd[f] ?? 0)) > 0.0001) rd++;
+      else if (typeof od[f] !== 'number' && String(od[f]) !== String(cd[f])) rd++;
+    }
+    if (!deepEqual(od.player, cd.player)) rd++;
+    if (!deepEqual(od.walls, cd.walls)) rd++;
+    if (!deepEqual(od.ghosts, cd.ghosts)) rd++;
+    if (!deepEqual(od.interactables, cd.interactables)) rd++;
+  }
+  if (oSnaps.length !== cSnaps.length) rd++;
+  console.log(`  Level ${level}: ${oSnaps.length} snaps × ${RENDER_FIELDS.length + 4} fields — ${rd} diffs [${rd === 0 ? 'MATCH' : 'DIFF'}]`);
+  if (rd > 0) cat6Pass = false;
+}
+console.log(cat6Pass ? '\n  ✓ ALL RENDERER FRAMES MATCH' : '\n  ✗ RENDERER FRAME DIVERGENCE');
+
+// ═════════════════════════════════════════════════════════
 // SUMMARY
 // ═════════════════════════════════════════════════════════
 
@@ -904,7 +951,8 @@ console.log(`  2. Interactions:     ${cat2Pass ? 'PASS' : 'FAIL'}`);
 console.log(`  3. HUD DOM:          ${cat3Pass ? 'PASS' : 'FAIL'}`);
 console.log(`  4. Audio:            ${cat4Pass ? 'PASS' : 'FAIL'}`);
 console.log(`  5. AI Coverage:      ${cat5Pass ? 'PASS' : 'FAIL'}`);
-const allPass = cat1Pass && cat2Pass && cat3Pass && cat4Pass && cat5Pass;
-console.log(`\n  ${allPass ? 'ALL 5 CATEGORIES PASS' : 'SOME CATEGORIES FAILED'}`);
+console.log(`  6. Renderer Frames:  ${cat6Pass ? 'PASS' : 'FAIL'}`);
+const allPass = cat1Pass && cat2Pass && cat3Pass && cat4Pass && cat5Pass && cat6Pass;
+console.log(`\n  ${allPass ? 'ALL 6 CATEGORIES PASS' : 'SOME CATEGORIES FAILED'}`);
 
 process.exit(allPass ? 0 : 1);
