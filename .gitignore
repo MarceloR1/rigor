@@ -1,4 +1,4 @@
 node_modules/
 dist/
 .vite/
-.claude/
+.claude/tests/visual-current/
