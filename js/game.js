@@ -37,6 +37,17 @@ const CONFIG = {
     SCREAMER_STUN_TIME: 0.9,
     SCREAMER_DETECT_RANGE: 310,
     SCREAMER_FINAL_SPEED: 4.2,
+    STALKER_FLEE_SPEED_MULT: 2.25,
+    STALKER_WINDUP_SPEED_MULT: 0.18,
+    STALKER_LUNGE_SPEED_MULT: 2.1,
+    STALKER_REPOSITION_SPEED_MULT: 1.45,
+    CRAWLER_TRACK_SPEED_MULT: 0.68,
+    CRAWLER_LUNGE_SPEED_MULT: 1.28,
+    CRAWLER_SEARCH_SPEED_MULT: 0.82,
+    SCREAMER_WINDUP_SPEED_MULT: 0.08,
+    SCREAMER_CHARGE_SPEED_MULT: 2.0,
+    SCREAMER_FINAL_CHARGE_SPEED_MULT: 2.35,
+    GHOST_STUN_SPEED_MULT: 0.22,
     BREATH_SPEED: 66,
     SCORE_PER_KEY: 500,
     SCORE_BATTERY_MULTIPLIER: 5,
@@ -351,7 +362,6 @@ function loadLevel(lvl) {
         player.x = 100;
         player.y = h / 2;
 
-        // Horizontal Corridor Boundaries
         walls.push({ x: 0, y: h / 2 - 120, w: w, h: 25 });
         walls.push({ x: 0, y: h / 2 + 100, w: w, h: 25 });
 
@@ -387,16 +397,13 @@ function loadLevel(lvl) {
         player.x = 120;
         player.y = h / 2;
 
-        // Room Outer Boundaries
         walls.push({ x: 60, y: 60, w: w - 120, h: 25 });
         walls.push({ x: 60, y: h - 85, w: w - 120, h: 25 });
         walls.push({ x: 60, y: 60, w: 25, h: h - 145 });
         walls.push({ x: w - 85, y: 60, w: 25, h: h - 145 });
 
-        // Morgue Gurneys & Safe
         interactables.push({ type: 'safe', x: w - 160, y: 130, radius: 28, label: 'Caja Fuerte' });
 
-        // Invisible Ghosts
         ghosts.push({
             x: w * 0.78,
             y: h * 0.76,
@@ -432,19 +439,15 @@ function loadLevel(lvl) {
         walls.push({ x: 45, y: 45, w: 24, h: h - 90 });
         walls.push({ x: w - 69, y: 45, w: 24, h: h - 90 });
 
-        // Wardrobes
         interactables.push({ type: 'wardrobe', x: 220, y: 140, radius: 28, label: 'Armario' });
         interactables.push({ type: 'wardrobe', x: 220, y: h - 160, radius: 28, label: 'Armario' });
 
-        // Altars
         interactables.push({ type: 'altar', idx: 0, x: w / 2 - 120, y: h / 2 - 140, radius: 24, label: 'Altar Sol' });
         interactables.push({ type: 'altar', idx: 1, x: w / 2 + 120, y: h / 2 - 140, radius: 24, label: 'Altar Luna' });
         interactables.push({ type: 'altar', idx: 2, x: w / 2, y: h / 2 + 150, radius: 24, label: 'Altar Cruz' });
 
-        // Chapel Exit Door
         interactables.push({ type: 'chapel_exit', x: w - 120, y: h / 2, radius: 35, label: 'Puerta Salida' });
 
-        // Patrol Spectre
         ghosts.push({
             x: w * 0.79,
             y: h * 0.22,
@@ -870,47 +873,47 @@ function updateGhostAI(delta, frameScale, playerMoving) {
             if (ghost.aiState === 'flee') {
                 targetX = player.x;
                 targetY = player.y;
-                currentSpeed *= 2.25;
+                currentSpeed *= CONFIG.STALKER_FLEE_SPEED_MULT;
                 ghost.isFleeing = true;
             } else if (ghost.aiState === 'windup') {
                 targetX = player.x;
                 targetY = player.y;
-                currentSpeed *= 0.18;
+                currentSpeed *= CONFIG.STALKER_WINDUP_SPEED_MULT;
                 ghost.isCharging = true;
             } else if (ghost.aiState === 'lunge') {
                 targetX = player.x;
                 targetY = player.y;
-                currentSpeed *= 2.1;
+                currentSpeed *= CONFIG.STALKER_LUNGE_SPEED_MULT;
                 ghost.isCharging = true;
             } else if (ghost.aiState === 'reposition') {
                 const waypoint = ghost.path[ghost.pathIdx];
                 targetX = waypoint.x;
                 targetY = waypoint.y;
-                currentSpeed *= 1.45;
+                currentSpeed *= CONFIG.STALKER_REPOSITION_SPEED_MULT;
             }
         } else if (ghost.type === 'crawler') {
             if (ghost.aiState === 'track' || ghost.aiState === 'lunge') {
                 const target = ghost.hasVisual ? player : ghost.lastKnown;
                 targetX = target.x;
                 targetY = target.y;
-                currentSpeed *= ghost.aiState === 'lunge' ? 1.28 : 0.68;
+                currentSpeed *= ghost.aiState === 'lunge' ? CONFIG.CRAWLER_LUNGE_SPEED_MULT : CONFIG.CRAWLER_TRACK_SPEED_MULT;
                 ghost.isCharging = ghost.aiState === 'lunge';
             } else if (ghost.aiState === 'search') {
                 targetX = ghost.lastKnown.x;
                 targetY = ghost.lastKnown.y;
-                currentSpeed *= 0.82;
+                currentSpeed *= CONFIG.CRAWLER_SEARCH_SPEED_MULT;
             }
         } else if (ghost.type === 'screamer') {
             if (ghost.aiState === 'windup') {
                 targetX = ghost.lastKnown.x;
                 targetY = ghost.lastKnown.y;
-                currentSpeed *= 0.08;
+                currentSpeed *= CONFIG.SCREAMER_WINDUP_SPEED_MULT;
                 ghost.isCharging = true;
             } else if (ghost.aiState === 'charge') {
                 const chargeTarget = state.l3FinalChase && hasLineOfSight ? player : ghost.lastKnown;
                 targetX = chargeTarget.x;
                 targetY = chargeTarget.y;
-                currentSpeed *= state.l3FinalChase ? 2.35 : 2.0;
+                currentSpeed *= state.l3FinalChase ? CONFIG.SCREAMER_FINAL_CHARGE_SPEED_MULT : CONFIG.SCREAMER_CHARGE_SPEED_MULT;
                 ghost.isCharging = true;
             } else if (ghost.aiState === 'stunned') {
                 currentSpeed = 0;
@@ -926,7 +929,7 @@ function updateGhostAI(delta, frameScale, playerMoving) {
             }
         }
 
-        if (ghost.isStunned) currentSpeed *= 0.22 * selectedChar.ghostHesitation;
+        if (ghost.isStunned) currentSpeed *= CONFIG.GHOST_STUN_SPEED_MULT * selectedChar.ghostHesitation;
         if (targetX !== null && targetY !== null && currentSpeed > 0) {
             let moveAngle = Math.atan2(targetY - ghost.y, targetX - ghost.x);
             if (ghost.isFleeing) moveAngle += Math.PI;
@@ -964,7 +967,6 @@ function updateGhostAI(delta, frameScale, playerMoving) {
             }
         }
 
-        // Damage Check
         if (!state.isInvulnerable && !state.l3Hidden) {
             if (Math.hypot(player.x - ghost.x, player.y - ghost.y) < player.radius + ghost.radius) {
                 takeDamage();
