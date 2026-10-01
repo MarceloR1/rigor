@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:equivalence": "node tests/equivalence-test.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "jsdom": "^30.1.1",
     "tailwindcss": "^4.3.3",
     "vite": "^7.1.7"
   }
