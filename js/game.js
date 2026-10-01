@@ -920,6 +920,69 @@ function updateCrawler(ghost, ctx) {
     return { targetX, targetY, currentSpeed };
 }
 
+function updateScreamer(ghost, ctx) {
+    const { distance, inLight, hasLineOfSight } = ctx;
+
+    if (state.l3Hidden && ['windup', 'charge'].includes(ghost.aiState)) {
+        ghost.aiState = 'recover';
+        ghost.stateTimer = CONFIG.SCREAMER_STUN_TIME;
+    } else if (inLight && (ghost.aiState === 'windup' || ghost.aiState === 'charge')) {
+        ghost.aiState = 'stunned';
+        ghost.stateTimer = CONFIG.SCREAMER_STUN_TIME;
+        ghost.lungeCooldown = Math.max(ghost.lungeCooldown, 1.2);
+    } else if (ghost.aiState === 'windup' && ghost.stateTimer <= 0) {
+        ghost.aiState = 'charge';
+        ghost.stateTimer = CONFIG.SCREAMER_CHARGE_TIME;
+        ghost.lungeCooldown = CONFIG.SCREAMER_CHARGE_COOLDOWN;
+    } else if (ghost.aiState === 'charge' && ghost.stateTimer <= 0) {
+        ghost.aiState = 'recover';
+        ghost.stateTimer = CONFIG.SCREAMER_RECOVER_TIME;
+    } else if (ghost.aiState === 'recover' && ghost.stateTimer <= 0) {
+        ghost.aiState = 'patrol';
+    } else if (ghost.aiState === 'stunned' && ghost.stateTimer <= 0) {
+        ghost.aiState = 'recover';
+        ghost.stateTimer = 1.1;
+    } else if (
+        !state.l3Hidden &&
+        hasLineOfSight &&
+        ghost.aiState === 'patrol' &&
+        distance < CONFIG.SCREAMER_DETECT_RANGE &&
+        ghost.lungeCooldown <= 0
+    ) {
+        ghost.lastKnown.x = player.x;
+        ghost.lastKnown.y = player.y;
+        ghost.aiState = 'windup';
+        ghost.stateTimer = CONFIG.SCREAMER_WINDUP_TIME;
+    }
+    ghost.isStunned = inLight || ghost.aiState === 'stunned';
+
+    if (state.l3FinalChase && !state.l3Hidden) {
+        ghost.aiState = 'charge';
+        ghost.stateTimer = Math.max(ghost.stateTimer, 0.25);
+    }
+
+    let targetX = null;
+    let targetY = null;
+    let currentSpeed = ghost.speed;
+
+    if (ghost.aiState === 'windup') {
+        targetX = ghost.lastKnown.x;
+        targetY = ghost.lastKnown.y;
+        currentSpeed *= CONFIG.SCREAMER_WINDUP_SPEED_MULT;
+        ghost.isCharging = true;
+    } else if (ghost.aiState === 'charge') {
+        const chargeTarget = state.l3FinalChase && hasLineOfSight ? player : ghost.lastKnown;
+        targetX = chargeTarget.x;
+        targetY = chargeTarget.y;
+        currentSpeed *= state.l3FinalChase ? CONFIG.SCREAMER_FINAL_CHARGE_SPEED_MULT : CONFIG.SCREAMER_CHARGE_SPEED_MULT;
+        ghost.isCharging = true;
+    } else if (ghost.aiState === 'stunned') {
+        currentSpeed = 0;
+    }
+
+    return { targetX, targetY, currentSpeed };
+}
+
 function updateGhostAI(delta, frameScale, playerMoving) {
     ghosts.forEach((ghost) => {
         const distance = Math.hypot(player.x - ghost.x, player.y - ghost.y);
@@ -947,58 +1010,7 @@ function updateGhostAI(delta, frameScale, playerMoving) {
         } else if (ghost.type === 'crawler') {
             ({ targetX, targetY, currentSpeed } = updateCrawler(ghost, ctx));
         } else if (ghost.type === 'screamer') {
-            if (state.l3Hidden && ['windup', 'charge'].includes(ghost.aiState)) {
-                ghost.aiState = 'recover';
-                ghost.stateTimer = CONFIG.SCREAMER_STUN_TIME;
-            } else if (inLight && (ghost.aiState === 'windup' || ghost.aiState === 'charge')) {
-                ghost.aiState = 'stunned';
-                ghost.stateTimer = CONFIG.SCREAMER_STUN_TIME;
-                ghost.lungeCooldown = Math.max(ghost.lungeCooldown, 1.2);
-            } else if (ghost.aiState === 'windup' && ghost.stateTimer <= 0) {
-                ghost.aiState = 'charge';
-                ghost.stateTimer = CONFIG.SCREAMER_CHARGE_TIME;
-                ghost.lungeCooldown = CONFIG.SCREAMER_CHARGE_COOLDOWN;
-            } else if (ghost.aiState === 'charge' && ghost.stateTimer <= 0) {
-                ghost.aiState = 'recover';
-                ghost.stateTimer = CONFIG.SCREAMER_RECOVER_TIME;
-            } else if (ghost.aiState === 'recover' && ghost.stateTimer <= 0) {
-                ghost.aiState = 'patrol';
-            } else if (ghost.aiState === 'stunned' && ghost.stateTimer <= 0) {
-                ghost.aiState = 'recover';
-                ghost.stateTimer = 1.1;
-            } else if (
-                !state.l3Hidden &&
-                hasLineOfSight &&
-                ghost.aiState === 'patrol' &&
-                distance < CONFIG.SCREAMER_DETECT_RANGE &&
-                ghost.lungeCooldown <= 0
-            ) {
-                ghost.lastKnown.x = player.x;
-                ghost.lastKnown.y = player.y;
-                ghost.aiState = 'windup';
-                ghost.stateTimer = CONFIG.SCREAMER_WINDUP_TIME;
-            }
-            ghost.isStunned = inLight || ghost.aiState === 'stunned';
-
-            if (state.l3FinalChase && !state.l3Hidden) {
-                ghost.aiState = 'charge';
-                ghost.stateTimer = Math.max(ghost.stateTimer, 0.25);
-            }
-
-            if (ghost.aiState === 'windup') {
-                targetX = ghost.lastKnown.x;
-                targetY = ghost.lastKnown.y;
-                currentSpeed *= CONFIG.SCREAMER_WINDUP_SPEED_MULT;
-                ghost.isCharging = true;
-            } else if (ghost.aiState === 'charge') {
-                const chargeTarget = state.l3FinalChase && hasLineOfSight ? player : ghost.lastKnown;
-                targetX = chargeTarget.x;
-                targetY = chargeTarget.y;
-                currentSpeed *= state.l3FinalChase ? CONFIG.SCREAMER_FINAL_CHARGE_SPEED_MULT : CONFIG.SCREAMER_CHARGE_SPEED_MULT;
-                ghost.isCharging = true;
-            } else if (ghost.aiState === 'stunned') {
-                currentSpeed = 0;
-            }
+            ({ targetX, targetY, currentSpeed } = updateScreamer(ghost, ctx));
         }
 
         moveGhost(ghost, targetX, targetY, currentSpeed, frameScale);
