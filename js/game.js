@@ -868,6 +868,58 @@ function checkGhostDamage(ghost) {
     }
 }
 
+function updateCrawler(ghost, ctx) {
+    const { distance, inLight, hasLineOfSight, playerMoving } = ctx;
+
+    const canSensePlayer =
+        !state.l3Hidden &&
+        distance < CONFIG.CRAWLER_SENSE_RANGE &&
+        ((playerMoving && distance < CONFIG.CRAWLER_MOVEMENT_SENSE) ||
+            (state.isRecCameraOn && hasLineOfSight) ||
+            distance < CONFIG.CRAWLER_CLOSE_RANGE);
+    ghost.hasVisual = canSensePlayer;
+    if (canSensePlayer) {
+        ghost.lastKnown.x = player.x;
+        ghost.lastKnown.y = player.y;
+        ghost.searchTimer = CONFIG.CRAWLER_SEARCH_TIME;
+        if (distance < CONFIG.CRAWLER_LUNGE_RANGE && ghost.aiState !== 'lunge' && ghost.lungeCooldown <= 0) {
+            ghost.aiState = 'lunge';
+            ghost.stateTimer = CONFIG.CRAWLER_LUNGE_TIME;
+            ghost.lungeCooldown = CONFIG.CRAWLER_LUNGE_COOLDOWN;
+        } else if (ghost.aiState !== 'lunge') {
+            ghost.aiState = 'track';
+        }
+    } else if (ghost.aiState === 'track' && ghost.searchTimer <= 0) {
+        ghost.aiState = 'search';
+        ghost.stateTimer = CONFIG.CRAWLER_SEARCH_MOVE_TIME;
+        ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
+    } else if (ghost.aiState === 'search' && ghost.stateTimer <= 0) {
+        ghost.aiState = 'patrol';
+    } else if (ghost.aiState === 'lunge' && ghost.stateTimer <= 0) {
+        ghost.aiState = distance < 230 ? 'track' : 'search';
+        ghost.stateTimer = 0.85;
+    }
+    ghost.isStunned = inLight;
+
+    let targetX = null;
+    let targetY = null;
+    let currentSpeed = ghost.speed;
+
+    if (ghost.aiState === 'track' || ghost.aiState === 'lunge') {
+        const target = ghost.hasVisual ? player : ghost.lastKnown;
+        targetX = target.x;
+        targetY = target.y;
+        currentSpeed *= ghost.aiState === 'lunge' ? CONFIG.CRAWLER_LUNGE_SPEED_MULT : CONFIG.CRAWLER_TRACK_SPEED_MULT;
+        ghost.isCharging = ghost.aiState === 'lunge';
+    } else if (ghost.aiState === 'search') {
+        targetX = ghost.lastKnown.x;
+        targetY = ghost.lastKnown.y;
+        currentSpeed *= CONFIG.CRAWLER_SEARCH_SPEED_MULT;
+    }
+
+    return { targetX, targetY, currentSpeed };
+}
+
 function updateGhostAI(delta, frameScale, playerMoving) {
     ghosts.forEach((ghost) => {
         const distance = Math.hypot(player.x - ghost.x, player.y - ghost.y);
@@ -893,47 +945,7 @@ function updateGhostAI(delta, frameScale, playerMoving) {
         if (ghost.type === 'stalker') {
             ({ targetX, targetY, currentSpeed } = updateStalker(ghost, ctx));
         } else if (ghost.type === 'crawler') {
-            const canSensePlayer =
-                !state.l3Hidden &&
-                distance < CONFIG.CRAWLER_SENSE_RANGE &&
-                ((playerMoving && distance < CONFIG.CRAWLER_MOVEMENT_SENSE) ||
-                    (state.isRecCameraOn && hasLineOfSight) ||
-                    distance < CONFIG.CRAWLER_CLOSE_RANGE);
-            ghost.hasVisual = canSensePlayer;
-            if (canSensePlayer) {
-                ghost.lastKnown.x = player.x;
-                ghost.lastKnown.y = player.y;
-                ghost.searchTimer = CONFIG.CRAWLER_SEARCH_TIME;
-                if (distance < CONFIG.CRAWLER_LUNGE_RANGE && ghost.aiState !== 'lunge' && ghost.lungeCooldown <= 0) {
-                    ghost.aiState = 'lunge';
-                    ghost.stateTimer = CONFIG.CRAWLER_LUNGE_TIME;
-                    ghost.lungeCooldown = CONFIG.CRAWLER_LUNGE_COOLDOWN;
-                } else if (ghost.aiState !== 'lunge') {
-                    ghost.aiState = 'track';
-                }
-            } else if (ghost.aiState === 'track' && ghost.searchTimer <= 0) {
-                ghost.aiState = 'search';
-                ghost.stateTimer = CONFIG.CRAWLER_SEARCH_MOVE_TIME;
-                ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
-            } else if (ghost.aiState === 'search' && ghost.stateTimer <= 0) {
-                ghost.aiState = 'patrol';
-            } else if (ghost.aiState === 'lunge' && ghost.stateTimer <= 0) {
-                ghost.aiState = distance < 230 ? 'track' : 'search';
-                ghost.stateTimer = 0.85;
-            }
-            ghost.isStunned = inLight;
-
-            if (ghost.aiState === 'track' || ghost.aiState === 'lunge') {
-                const target = ghost.hasVisual ? player : ghost.lastKnown;
-                targetX = target.x;
-                targetY = target.y;
-                currentSpeed *= ghost.aiState === 'lunge' ? CONFIG.CRAWLER_LUNGE_SPEED_MULT : CONFIG.CRAWLER_TRACK_SPEED_MULT;
-                ghost.isCharging = ghost.aiState === 'lunge';
-            } else if (ghost.aiState === 'search') {
-                targetX = ghost.lastKnown.x;
-                targetY = ghost.lastKnown.y;
-                currentSpeed *= CONFIG.CRAWLER_SEARCH_SPEED_MULT;
-            }
+            ({ targetX, targetY, currentSpeed } = updateCrawler(ghost, ctx));
         } else if (ghost.type === 'screamer') {
             if (state.l3Hidden && ['windup', 'charge'].includes(ghost.aiState)) {
                 ghost.aiState = 'recover';
