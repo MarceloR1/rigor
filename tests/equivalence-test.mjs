@@ -1,5 +1,5 @@
 import { createContext, Script } from 'node:vm';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -93,10 +93,18 @@ function classifySound(s) {
 // ─── Code Transformer ───────────────────────────────────
 
 function buildRunnable(source) {
+  const hasContainers = source.includes('const world =');
   let code = source.replace(
     /const\s*\{\s*GameRenderer3D\s*\}\s*=\s*await\s+import\s*\([^)]+\)\s*;/,
     'const GameRenderer3D = class { constructor(){this._frames=[];} resize(){} renderFrame(f){this._frames.push(JSON.parse(JSON.stringify(f)));} };'
   );
+
+  const g = hasContainers ? 'world.ghosts' : 'ghosts';
+  const w = hasContainers ? 'world.walls' : 'walls';
+  const it = hasContainers ? 'world.interactables' : 'interactables';
+  const sc = hasContainers ? 'session.selectedChar' : 'selectedChar';
+  const vw = hasContainers ? 'viewport.width' : 'viewportWidth';
+  const vh = hasContainers ? 'viewport.height' : 'viewportHeight';
 
   return `
 (function(__doc, __win, __rng, __perf, __setTimeout, __clearTimeout, __raf, __ls) {
@@ -115,26 +123,26 @@ function buildRunnable(source) {
   return {
     get state() { return state; },
     get player() { return player; },
-    get ghosts() { return ghosts; },
-    get walls() { return walls; },
-    get interactables() { return interactables; },
+    get ghosts() { return ${g}; },
+    get walls() { return ${w}; },
+    get interactables() { return ${it}; },
     get mouse() { return mouse; },
     get keys() { return keys; },
-    get selectedChar() { return selectedChar; },
-    get viewportWidth() { return viewportWidth; },
-    get viewportHeight() { return viewportHeight; },
+    get selectedChar() { return ${sc}; },
+    get viewportWidth() { return ${vw}; },
+    get viewportHeight() { return ${vh}; },
     get rendererFrames() { return sceneRenderer._frames; },
     audio, loadLevel, update, updateHUD, render,
     checkInteraction, typeSafeDigit, submitSafeCode, clearSafeDisplay,
     closeSafeModal, openSafeModal, showPrompt, triggerVictory,
     restartCurrentLevel, togglePause,
     setGameStarted(v) { gameStarted = v; },
-    setSelectedChar(c) { selectedChar = c; },
+    setSelectedChar(c) { ${sc} = c; },
     setKeys(k) { keys = Object.assign({}, k); },
     setMouse(m) { mouse.x = m.x; mouse.y = m.y; },
     getState() { return JSON.parse(JSON.stringify(state)); },
     getPlayer() { return JSON.parse(JSON.stringify(player)); },
-    getGhosts() { return JSON.parse(JSON.stringify(ghosts)); },
+    getGhosts() { return JSON.parse(JSON.stringify(${g})); },
   };
 })
 `;
@@ -163,9 +171,10 @@ function createInstance(script, htmlSource, seed) {
     if (idx >= 0) pendingTimers.splice(idx, 1);
   };
 
+  const winListeners = {};
   const mockWindow = {
     innerWidth: VP_W, innerHeight: VP_H,
-    addEventListener() {},
+    addEventListener(evt, fn) { (winListeners[evt] ||= []).push(fn); },
     AudioContext: AudioContextClass,
     webkitAudioContext: undefined,
   };
@@ -205,7 +214,9 @@ function createInstance(script, htmlSource, seed) {
     batch.forEach(t => t.fn());
   }
 
-  return { game, doc, sounds, initGame, flushTimers, pendingTimers };
+  function triggerWinEvent(evt) { winListeners[evt]?.forEach(fn => fn()); }
+
+  return { game, doc, sounds, initGame, flushTimers, pendingTimers, mockWindow, triggerWinEvent };
 }
 
 // ─── HUD Snapshot ───────────────────────────────────────
@@ -513,6 +524,74 @@ function runInteractionScenarios(label, script, htmlSource) {
     });
   }
 
+  // ── Window resize during game ──────────────────────────
+  {
+    const inst = createInstance(script, htmlSource, SEED);
+    inst.initGame(1);
+    for (let i = 0; i < 100; i++) {
+      inst.game.setKeys({ KeyD: true, KeyW: false, KeyS: false, KeyA: false, Space: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false });
+      inst.game.setMouse({ x: 800, y: 360 });
+      inst.game.update(DELTA);
+    }
+    const before = {
+      px: inst.game.player.x, py: inst.game.player.y,
+      w0: { ...inst.game.walls[0] },
+      g0x: inst.game.ghosts[0].x, g0y: inst.game.ghosts[0].y,
+      i0x: inst.game.interactables[0].x, i0y: inst.game.interactables[0].y,
+    };
+    const newW = 1600, newH = 900;
+    const scaleX = newW / VP_W, scaleY = newH / VP_H;
+    inst.mockWindow.innerWidth = newW;
+    inst.mockWindow.innerHeight = newH;
+    inst.triggerWinEvent('resize');
+    const after = {
+      px: inst.game.player.x, py: inst.game.player.y,
+      w0: { ...inst.game.walls[0] },
+      g0x: inst.game.ghosts[0].x, g0y: inst.game.ghosts[0].y,
+      i0x: inst.game.interactables[0].x, i0y: inst.game.interactables[0].y,
+      vw: inst.game.viewportWidth, vh: inst.game.viewportHeight,
+    };
+    scenarios.push({
+      name: 'Window resize during game',
+      results: {
+        playerX: Math.abs(after.px - before.px * scaleX) < 0.01,
+        playerY: Math.abs(after.py - before.py * scaleY) < 0.01,
+        wallX: Math.abs(after.w0.x - before.w0.x * scaleX) < 0.01,
+        wallW: Math.abs(after.w0.w - before.w0.w * scaleX) < 0.01,
+        ghostX: Math.abs(after.g0x - before.g0x * scaleX) < 0.01,
+        interactX: Math.abs(after.i0x - before.i0x * scaleX) < 0.01,
+        viewportUpdated: after.vw === newW && after.vh === newH,
+      },
+    });
+  }
+
+  // ── Focus loss clears keys and pauses ─────────────────
+  {
+    const inst = createInstance(script, htmlSource, SEED);
+    inst.initGame(1);
+    inst.doc.getElementById('hud').classList.remove('hidden');
+    for (let i = 0; i < 30; i++) {
+      inst.game.setKeys({ KeyD: true, KeyW: false, KeyS: false, KeyA: false, Space: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false });
+      inst.game.setMouse({ x: 800, y: 360 });
+      inst.game.update(DELTA);
+    }
+    const hadKeys = Object.values(inst.game.keys).some(v => v === true);
+    const wasPaused = inst.game.state.isPaused;
+    inst.triggerWinEvent('blur');
+    const keysAfter = { ...inst.game.keys };
+    const keysCleared = Object.keys(keysAfter).length === 0;
+    const pausedAfter = inst.game.state.isPaused;
+    scenarios.push({
+      name: 'Focus loss clears keys and pauses',
+      results: {
+        hadKeys,
+        wasPaused,
+        keysCleared,
+        pausedAfter,
+      },
+    });
+  }
+
   return scenarios;
 }
 
@@ -693,11 +772,35 @@ function compareSounds(origSounds, currSounds) {
   return diffs;
 }
 
+// ─── Module loader ──────────────────────────────────────
+
+const MODULE_ORDER = [
+  'config.js', 'audio.js', 'state.js', 'hud.js', 'entities.js',
+  'levels.js', 'interactions.js', 'player.js', 'game.js',
+];
+
+function loadCurrentSource() {
+  const jsDir = resolve(ROOT, 'js');
+  const modules = MODULE_ORDER.filter(f => existsSync(resolve(jsDir, f)));
+  if (modules.length <= 1) {
+    return readFileSync(resolve(jsDir, 'game.js'), 'utf8');
+  }
+  let combined = '';
+  for (const f of modules) {
+    let src = readFileSync(resolve(jsDir, f), 'utf8');
+    src = src.replace(/^import\s+.*$/gm, '');
+    src = src.replace(/^export\s+(const|let|var|function|class)\s/gm, '$1 ');
+    src = src.replace(/^export\s*\{[^}]*\}\s*;?\s*$/gm, '');
+    combined += src + '\n';
+  }
+  return combined;
+}
+
 // ─── Main ───────────────────────────────────────────────
 
 const htmlSource = readFileSync(HTML_PATH, 'utf8');
 const origCode = buildRunnable(execSync(`git -C "${ROOT}" show ${ORIGINAL_COMMIT}:js/game.js`, { encoding: 'utf8' }));
-const currCode = buildRunnable(readFileSync(resolve(ROOT, 'js', 'game.js'), 'utf8'));
+const currCode = buildRunnable(loadCurrentSource());
 const origScript = new Script(origCode, { filename: 'original/game.js' });
 const currScript = new Script(currCode, { filename: 'current/game.js' });
 
