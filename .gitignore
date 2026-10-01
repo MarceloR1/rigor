@@ -2,3 +2,5 @@ node_modules/
 dist/
 .vite/
 .claude/tests/visual-current/
+docs/
+tests/visual-current/
