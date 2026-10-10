@@ -304,12 +304,63 @@ export class GameRenderer3D {
                 }
             }
         } else {
-            context.fillRect(5, 5, 54, 118);
-            context.fillRect(69, 5, 54, 118);
-            context.fillStyle = 'rgba(158, 121, 92, 0.12)';
-            context.fillRect(0, 62, 128, 4);
+            // Nivel 3: Losas de piedra gótica antigua, mortero oscuro, grietas y humedad
+            context.fillStyle = '#181216';
+            context.fillRect(0, 0, 128, 128);
+
+            // Losas desgastadas y desiguales
+            const flags = [
+                { x: 3, y: 3, w: 58, h: 58, shade: '#231920' },
+                { x: 65, y: 3, w: 60, h: 30, shade: '#291d24' },
+                { x: 65, y: 37, w: 60, h: 42, shade: '#20181d' },
+                { x: 3, y: 65, w: 42, h: 60, shade: '#261b22' },
+                { x: 49, y: 65, w: 38, h: 60, shade: '#22181e' },
+                { x: 91, y: 83, w: 34, h: 42, shade: '#281c23' }
+            ];
+            flags.forEach((f) => {
+                context.fillStyle = f.shade;
+                context.fillRect(f.x, f.y, f.w, f.h);
+                // Relieve biselado en borde
+                context.strokeStyle = 'rgba(118, 86, 100, 0.18)';
+                context.lineWidth = 1;
+                context.strokeRect(f.x + 1, f.y + 1, f.w - 2, f.h - 2);
+            });
+
+            // Manchas de humedad / pátina borgoña y musgo seco
+            context.fillStyle = 'rgba(78, 20, 30, 0.24)';
+            context.beginPath();
+            context.arc(32, 28, 16, 0, Math.PI * 2);
+            context.arc(94, 50, 14, 0, Math.PI * 2);
+            context.fill();
+
+            context.fillStyle = 'rgba(25, 34, 25, 0.18)';
+            context.beginPath();
+            context.arc(20, 95, 14, 0, Math.PI * 2);
+            context.arc(106, 108, 11, 0, Math.PI * 2);
+            context.fill();
+
+            // Grietas finas en la piedra
+            context.strokeStyle = 'rgba(8, 4, 7, 0.68)';
+            context.lineWidth = 1;
+            context.beginPath();
+            context.moveTo(14, 12); context.lineTo(24, 26); context.lineTo(33, 30);
+            context.moveTo(76, 10); context.lineTo(84, 18);
+            context.moveTo(56, 80); context.lineTo(62, 94); context.lineTo(59, 106);
+            context.stroke();
+
+            // Líneas de mortero profundo oscuro
+            context.strokeStyle = 'rgba(10, 6, 8, 0.92)';
+            context.lineWidth = 2.5;
+            context.beginPath();
+            context.moveTo(0, 63); context.lineTo(128, 63);
+            context.moveTo(63, 0); context.lineTo(63, 63);
+            context.moveTo(65, 35); context.lineTo(128, 35);
+            context.moveTo(47, 63); context.lineTo(47, 128);
+            context.moveTo(89, 63); context.lineTo(89, 128);
+            context.moveTo(89, 81); context.lineTo(128, 81);
+            context.stroke();
         }
-        if (level !== 2) {
+        if (level !== 2 && level !== 3) {
             context.strokeStyle = tile.line;
             context.lineWidth = 2;
             context.strokeRect(1, 1, 63, 63);
@@ -391,7 +442,12 @@ export class GameRenderer3D {
         const worldDepth = height * WORLD_SCALE;
         const floor = new THREE.Mesh(
             new THREE.PlaneGeometry(worldWidth, worldDepth),
-            new THREE.MeshStandardMaterial({ map: this.makeFloorTexture(level), color: level === 2 ? 0xc1ceca : level === 3 ? 0xa9998e : 0xffffff, roughness: 0.94, metalness: level === 2 ? 0.12 : 0.02 })
+            new THREE.MeshStandardMaterial({
+                map: this.makeFloorTexture(level),
+                color: level === 2 ? 0xc1ceca : level === 3 ? 0x8a7a82 : 0xffffff,
+                roughness: level === 3 ? 0.96 : 0.94,
+                metalness: level === 2 ? 0.12 : level === 3 ? 0.04 : 0.02
+            })
         );
         floor.rotation.x = -Math.PI / 2;
         floor.position.set(worldWidth / 2, -0.12, worldDepth / 2);
@@ -792,48 +848,216 @@ export class GameRenderer3D {
     }
 
     addChapelDetails(worldWidth, worldDepth) {
-        const nave = new THREE.Mesh(new THREE.BoxGeometry(worldWidth * 0.28, 0.02, worldDepth * 0.92), makeMaterial(0x352d27, { roughness: 0.96 }));
+        // Alfombra procesional central borgoña litúrgica desgastada
+        const nave = new THREE.Mesh(
+            new THREE.BoxGeometry(worldWidth * 0.26, 0.024, worldDepth * 0.9),
+            makeMaterial(0x381218, { roughness: 0.96 })
+        );
         nave.position.set(worldWidth * 0.5, -0.07, worldDepth * 0.5);
+        nave.receiveShadow = true;
         this.worldRoot.add(nave);
-        const oak = makeMaterial(0x49372e, { roughness: 0.84 });
-        const oakEdge = makeMaterial(0x725646, { roughness: 0.68 });
+
+        // Ribetes dorados apagados y deshilachados a los lados de la alfombra
+        const goldFringe = makeMaterial(0x6b5328, { roughness: 0.82, metalness: 0.2 });
+        for (const edge of [-1, 1]) {
+            const trim = new THREE.Mesh(
+                new THREE.BoxGeometry(0.04, 0.028, worldDepth * 0.9),
+                goldFringe
+            );
+            trim.position.set(worldWidth * 0.5 + edge * (worldWidth * 0.13 - 0.02), -0.065, worldDepth * 0.5);
+            this.worldRoot.add(trim);
+        }
+
+        // Bancas góticas de madera oscura tallada
+        const oakDark = makeMaterial(0x231713, { roughness: 0.9 });
+        const oakTrim = makeMaterial(0x3b261d, { roughness: 0.72 });
         for (const side of [-1, 1]) {
             for (let row = 0; row < 4; row++) {
                 const pew = new THREE.Group();
-                addBox(pew, 1.2, 0.12, 0.24, oakEdge, 0, 0.48, 0);
-                addBox(pew, 1.16, 0.48, 0.09, oak, 0, 0.75, 0.17);
-                for (const supportX of [-0.49, 0.49]) {
-                    addBox(pew, 0.09, 0.45, 0.12, oak, supportX, 0.26, 0.04);
-                    addBox(pew, 0.09, 0.46, 0.11, oak, supportX, 0.25, 0.2);
+                // Asiento biselado de roble macizo
+                addBox(pew, 1.26, 0.1, 0.28, oakTrim, 0, 0.45, 0);
+                // Respaldo alto tallado con panel moldurado
+                addBox(pew, 1.22, 0.54, 0.08, oakDark, 0, 0.75, 0.18);
+                // Cornisa superior moldurada del respaldo
+                addBox(pew, 1.26, 0.06, 0.11, oakTrim, 0, 1.04, 0.18);
+                // Reclinatorio bajo posterior
+                addBox(pew, 1.18, 0.05, 0.12, oakDark, 0, 0.12, 0.3);
+                // Laterales góticos (hastiales apuntados con florón)
+                for (const supportX of [-0.55, 0.55]) {
+                    addBox(pew, 0.1, 0.84, 0.36, oakTrim, supportX, 0.45, 0.06);
+                    // Remate apuntado gótico superior
+                    const finial = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.18, 4), oakTrim);
+                    finial.position.set(supportX, 0.96, 0.06);
+                    finial.rotation.y = Math.PI / 4;
+                    pew.add(finial);
                 }
                 pew.position.set(worldWidth * 0.5 + side * worldWidth * 0.28, 0, worldDepth * 0.25 + row * worldDepth * 0.15);
                 this.worldRoot.add(pew);
             }
         }
+
+        // Columnas góticas fasciculadas con columnillas adosadas y capiteles labrados
+        const gothicStone = makeMaterial(0x382f34, { roughness: 0.88 });
+        const stoneTrim = makeMaterial(0x4c3e46, { roughness: 0.78 });
         for (const side of [-1, 1]) {
             for (let index = 0; index < 4; index++) {
-                const column = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.18, 2.4, 8), makeMaterial(0x575047, { roughness: 0.85 }));
-                column.position.set(worldWidth * 0.19 + index * worldWidth * 0.2, 1.2, worldDepth * 0.5 + side * worldDepth * 0.42);
-                column.castShadow = true;
-                this.worldRoot.add(column);
+                const colGroup = new THREE.Group();
+                // Basamento escalonado poligonal
+                addBox(colGroup, 0.52, 0.28, 0.52, stoneTrim, 0, 0.14, 0);
+                // Pilar central octogonal
+                const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 2.25, 8), gothicStone);
+                shaft.position.y = 1.32;
+                shaft.castShadow = true;
+                colGroup.add(shaft);
+                // 4 columnillas adosadas que abrazan el pilar (haz de columnas)
+                for (const angle of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
+                    const colonnette = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.15, 6), stoneTrim);
+                    colonnette.position.set(Math.cos(angle) * 0.16, 1.3, Math.sin(angle) * 0.16);
+                    colonnette.castShadow = true;
+                    colGroup.add(colonnette);
+                }
+                // Capitel gótico tallado con collarín
+                const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.15, 0.24, 8), stoneTrim);
+                capital.position.y = 2.5;
+                colGroup.add(capital);
+                // Arranque de nervadura de arco hacia la bóveda
+                addBox(colGroup, 0.18, 0.15, 0.32, gothicStone, 0, 2.66, -side * 0.08);
+
+                colGroup.position.set(worldWidth * 0.19 + index * worldWidth * 0.2, 0, worldDepth * 0.5 + side * worldDepth * 0.42);
+                this.worldRoot.add(colGroup);
             }
         }
-        const glassColors = [0x7297a1, 0x9b5961, 0xc39b63];
+
+        // Vitrales góticos apuntados con tracería de piedra y colores litúrgicos
+        const stainedHues = [0x8c1b24, 0x61206d, 0x1a386b]; // Carmesí sangre, violeta místico, azul cobalto
+        const windowFrame = makeMaterial(0x2f2529, { roughness: 0.85 });
         for (const side of [-1, 1]) {
             for (let index = 0; index < 3; index++) {
-                const glass = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.72, 1.18),
-                    new THREE.MeshBasicMaterial({ color: glassColors[index], transparent: true, opacity: 0.46, side: THREE.DoubleSide })
+                const winGroup = new THREE.Group();
+                const color = stainedHues[index];
+                // Marco exterior de arco apuntado
+                addBox(winGroup, 0.88, 1.48, 0.08, windowFrame, 0, 0, 0);
+                // Dos paneles geminados vidriados
+                for (const panelX of [-0.2, 0.2]) {
+                    const glassPane = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.32, 1.08),
+                        new THREE.MeshStandardMaterial({
+                            color,
+                            emissive: color,
+                            emissiveIntensity: 0.24,
+                            transparent: true,
+                            opacity: 0.55,
+                            side: THREE.DoubleSide
+                        })
+                    );
+                    glassPane.position.set(panelX, -0.06, side * 0.01);
+                    winGroup.add(glassPane);
+                }
+                // Óculo / Rosetón superior de tracería
+                const roseGlass = new THREE.Mesh(
+                    new THREE.CircleGeometry(0.14, 12),
+                    new THREE.MeshStandardMaterial({
+                        color,
+                        emissive: color,
+                        emissiveIntensity: 0.32,
+                        transparent: true,
+                        opacity: 0.6,
+                        side: THREE.DoubleSide
+                    })
                 );
-                glass.position.set(worldWidth * 0.25 + index * worldWidth * 0.25, 1.56, worldDepth * 0.5 + side * (worldDepth * 0.485));
-                this.worldRoot.add(glass);
-                const frame = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.27, 0.07), makeMaterial(0x554338, { roughness: 0.78 }));
-                frame.position.copy(glass.position);
-                frame.position.z -= side * 0.045;
-                this.worldRoot.add(frame);
-                glass.renderOrder = 1;
+                roseGlass.position.set(0, 0.54, side * 0.01);
+                winGroup.add(roseGlass);
+
+                // Parteluz de piedra central
+                addBox(winGroup, 0.05, 1.2, 0.09, windowFrame, 0, -0.02, 0);
+
+                winGroup.position.set(
+                    worldWidth * 0.25 + index * worldWidth * 0.25,
+                    1.62,
+                    worldDepth * 0.5 + side * (worldDepth * 0.485)
+                );
+                this.worldRoot.add(winGroup);
             }
         }
+
+        // Altar Mayor Monumental con Gran Cruz Gótica en el Presbiterio (muro este)
+        const sanctuaryAltar = new THREE.Group();
+        const altarStone = makeMaterial(0x32282d, { roughness: 0.85 });
+        const darkWood = makeMaterial(0x211712, { roughness: 0.86 });
+        const oldGold = makeMaterial(0x7c6233, { roughness: 0.5, metalness: 0.45 });
+        const candleWax = makeMaterial(0xd9cfb8, { roughness: 0.6 });
+        const candleFlame = new THREE.MeshBasicMaterial({ color: 0xffaa44 });
+
+        // Gradas / basamento escalonado de piedra
+        addBox(sanctuaryAltar, 2.5, 0.12, 1.1, altarStone, 0, 0.06, 0);
+        addBox(sanctuaryAltar, 2.2, 0.12, 0.9, altarStone, 0, 0.18, 0);
+        // Mesa del Altar Mayor (mensa de piedra maciza)
+        addBox(sanctuaryAltar, 1.9, 0.48, 0.65, darkWood, 0, 0.46, 0);
+        // Frontal litúrgico de tela borgoña bordada
+        addBox(sanctuaryAltar, 1.76, 0.42, 0.04, makeMaterial(0x421319, { roughness: 0.92 }), 0, 0.45, 0.33);
+        addBox(sanctuaryAltar, 1.82, 0.04, 0.05, oldGold, 0, 0.66, 0.33);
+
+        // Retablo gótico de fondo adosado a la pared
+        addBox(sanctuaryAltar, 1.6, 1.45, 0.1, darkWood, 0, 1.35, -0.22);
+        addBox(sanctuaryAltar, 0.12, 1.55, 0.12, oldGold, -0.74, 1.4, -0.21);
+        addBox(sanctuaryAltar, 0.12, 1.55, 0.12, oldGold, 0.74, 1.4, -0.21);
+
+        // Gran Cruz Gótica de roble oscuro y bronce
+        addBox(sanctuaryAltar, 0.12, 1.15, 0.06, darkWood, 0, 1.48, -0.14);
+        addBox(sanctuaryAltar, 0.72, 0.12, 0.07, darkWood, 0, 1.68, -0.14);
+        // Remates trebolados de bronce
+        addBox(sanctuaryAltar, 0.16, 0.16, 0.08, oldGold, 0, 2.08, -0.14);
+        addBox(sanctuaryAltar, 0.16, 0.16, 0.08, oldGold, -0.38, 1.68, -0.14);
+        addBox(sanctuaryAltar, 0.16, 0.16, 0.08, oldGold, 0.38, 1.68, -0.14);
+
+        // Cirios mayores sobre el Altar Mayor
+        for (const candleX of [-0.68, -0.42, 0.42, 0.68]) {
+            const candleBody = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.038, 0.32, 8), candleWax);
+            candleBody.position.set(candleX, 0.86, -0.1);
+            sanctuaryAltar.add(candleBody);
+            const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.045, 1), candleFlame);
+            flame.position.set(candleX, 1.05, -0.1);
+            sanctuaryAltar.add(flame);
+        }
+        const altarGlow = new THREE.PointLight(0xff9438, 1.2, 5.2, 2.0);
+        altarGlow.position.set(0, 1.15, 0.1);
+        sanctuaryAltar.add(altarGlow);
+
+        sanctuaryAltar.position.set(worldWidth * 0.86, 0, worldDepth * 0.22);
+        this.worldRoot.add(sanctuaryAltar);
+
+        // Candelabros góticos de pie de hierro forjado
+        const iron = makeMaterial(0x19181a, { metalness: 0.78, roughness: 0.32 });
+        const candelabraPositions = [
+            [worldWidth * 0.18, worldDepth * 0.22],
+            [worldWidth * 0.18, worldDepth * 0.78],
+            [worldWidth * 0.86, worldDepth * 0.78]
+        ];
+        candelabraPositions.forEach(([cx, cz]) => {
+            const candelabrum = new THREE.Group();
+            // Trípode de base
+            addBox(candelabrum, 0.32, 0.06, 0.32, iron, 0, 0.03, 0);
+            // Vástago de hierro con nudos
+            const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.1, 7), iron);
+            stand.position.y = 0.58;
+            candelabrum.add(stand);
+            // Corona de 3 cirios
+            addBox(candelabrum, 0.38, 0.04, 0.08, iron, 0, 1.12, 0);
+            for (const offset of [-0.14, 0, 0.14]) {
+                const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.028, 0.22, 6), candleWax);
+                wax.position.set(offset, 1.24, 0);
+                candelabrum.add(wax);
+                const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.036, 1), candleFlame);
+                flame.position.set(offset, 1.38, 0);
+                candelabrum.add(flame);
+            }
+            const candleLight = new THREE.PointLight(0xff9033, 0.65, 3.4, 2.1);
+            candleLight.position.set(0, 1.45, 0);
+            candelabrum.add(candleLight);
+
+            candelabrum.position.set(cx, 0, cz);
+            this.worldRoot.add(candelabrum);
+        });
     }
 
     createUvClue(code, width, height) {
@@ -868,9 +1092,13 @@ export class GameRenderer3D {
         const width = wall.w * WORLD_SCALE;
         const depth = wall.h * WORLD_SCALE;
         const group = new THREE.Group();
-        const palette = { 1: [0x34312c, 0x766348], 2: [0x394447, 0x749091], 3: [0x39302f, 0x8d6657] }[level] ?? [0x393a38, 0x77716a];
-        const stone = makeMaterial(palette[0], { roughness: 0.88 });
-        const trim = makeMaterial(palette[1], { roughness: 0.58, metalness: 0.16 });
+        const palette = {
+            1: [0x34312c, 0x766348],
+            2: [0x394447, 0x749091],
+            3: [0x281f23, 0x47343b]
+        }[level] ?? [0x393a38, 0x77716a];
+        const stone = makeMaterial(palette[0], { roughness: level === 3 ? 0.92 : 0.88 });
+        const trim = makeMaterial(palette[1], { roughness: level === 3 ? 0.62 : 0.58, metalness: 0.16 });
         if (level === 2) {
             this.morgueWallTexture ??= this.makeMorgueWallTexture();
             stone.map = this.morgueWallTexture;
@@ -886,9 +1114,10 @@ export class GameRenderer3D {
             const x = -width / 2 + (width * index) / pilasterCount;
             addBox(group, 0.055, 1.05, depth + 0.025, trim, x, 0.57, 0, false);
         }
-        if (level > 1 && width > 2.5) {
-            const sconceMaterial = makeMaterial(level === 2 ? 0x77c4b7 : 0xcf806c, {
-                emissive: level === 2 ? 0x286d69 : 0x67251d,
+
+        if (level === 2 && width > 2.5) {
+            const sconceMaterial = makeMaterial(0x77c4b7, {
+                emissive: 0x286d69,
                 emissiveIntensity: 1.15,
                 roughness: 0.3
             });
@@ -896,6 +1125,25 @@ export class GameRenderer3D {
             for (let index = 0; index < sconceCount; index++) {
                 const x = -width / 2 + ((index + 0.5) * width) / sconceCount;
                 addBox(group, 0.18, 0.28, depth + 0.06, sconceMaterial, x, 1.02, 0, false);
+            }
+        } else if (level === 3 && width > 2.5) {
+            // Apliques góticos de hierro forjado con cirios ardientes en las paredes de La Capilla
+            const iron = makeMaterial(0x19181a, { metalness: 0.75, roughness: 0.35 });
+            const candleWax = makeMaterial(0xd9cfb8, { roughness: 0.6 });
+            const candleFlame = new THREE.MeshBasicMaterial({ color: 0xffaa44 });
+            const sconceCount = Math.min(4, Math.floor(width / 3.8));
+            for (let index = 0; index < sconceCount; index++) {
+                const x = -width / 2 + ((index + 0.5) * width) / sconceCount;
+                // Ménsula gótica de forja
+                addBox(group, 0.14, 0.24, depth + 0.06, iron, x, 0.88, 0, false);
+                addBox(group, 0.08, 0.04, depth + 0.14, iron, x, 0.98, 0, false);
+                // Vela
+                const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.028, 0.18, 6), candleWax);
+                wax.position.set(x, 1.1, depth * 0.5 + 0.07);
+                group.add(wax);
+                const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.035, 1), candleFlame);
+                flame.position.set(x, 1.22, depth * 0.5 + 0.07);
+                group.add(flame);
             }
         }
         group.position.set((wall.x + wall.w / 2) * WORLD_SCALE, 0, (wall.y + wall.h / 2) * WORLD_SCALE);
@@ -928,24 +1176,112 @@ export class GameRenderer3D {
             dial.position.set(0, 0.5, 0.455);
             group.add(dial);
         } else if (object.type === 'wardrobe') {
-            addBox(group, 0.92, 1.85, 0.7, makeMaterial(0x31594d, { roughness: 0.62 }), 0, 0.94, 0);
-            addBox(group, 0.04, 1.68, 0.035, makeMaterial(0x1b302a, { metalness: 0.22 }), 0, 0.94, 0.37);
-            for (const x of [-0.12, 0.12]) {
-                const handle = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), makeMaterial(0xb8a77a, { metalness: 0.72 }));
-                handle.position.set(x, 0.92, 0.42);
+            // Confesionario / Armario de sacristía gótico
+            const oakDark = makeMaterial(0x1e1511, { roughness: 0.9 });
+            const oakTrim = makeMaterial(0x35231c, { roughness: 0.74 });
+            const iron = makeMaterial(0x181719, { metalness: 0.75, roughness: 0.35 });
+
+            // Zócalo inferior moldurado
+            addBox(group, 0.96, 0.1, 0.72, oakTrim, 0, 0.05, 0);
+            // Cuerpo principal del mueble
+            addBox(group, 0.92, 1.82, 0.68, oakDark, 0, 0.96, 0);
+            // Cornisa moldurada superior
+            addBox(group, 0.96, 0.08, 0.72, oakTrim, 0, 1.88, 0);
+            // Frontón apuntado gótico superior
+            addBox(group, 0.78, 0.24, 0.12, oakTrim, 0, 2.02, 0.28);
+            // Cruz de hierro sobre el frontón
+            addBox(group, 0.04, 0.2, 0.03, iron, 0, 2.18, 0.32);
+            addBox(group, 0.12, 0.04, 0.03, iron, 0, 2.22, 0.32);
+
+            // Puertas batientes con celosías ojivales de confesionario
+            for (const doorX of [-0.21, 0.21]) {
+                addBox(group, 0.38, 1.55, 0.035, oakTrim, doorX, 0.94, 0.35);
+                // Relieve de arco ojival calado
+                addBox(group, 0.24, 0.68, 0.02, makeMaterial(0x110c09, { roughness: 0.95 }), doorX, 1.25, 0.37);
+                addBox(group, 0.24, 0.52, 0.02, makeMaterial(0x16100c, { roughness: 0.95 }), doorX, 0.58, 0.37);
+            }
+            // Tiradores de hierro forjado
+            for (const hx of [-0.08, 0.08]) {
+                const handle = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.012, 6, 12), iron);
+                handle.position.set(hx, 0.92, 0.38);
                 group.add(handle);
             }
         } else if (object.type === 'altar') {
-            const base = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.48, 0.34, 8), stone);
-            base.position.y = 0.17;
-            const top = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.15, 8), makeMaterial(0x71644f, { metalness: 0.25 }));
-            top.position.y = 0.41;
-            const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 1), makeMaterial(0x9c5ab4, { emissive: 0x5b1f80, emissiveIntensity: 1.1, roughness: 0.25 }));
+            // Altares del acertijo gótico (Sol, Luna, Cruz)
+            const altarStone = makeMaterial(0x34292f, { roughness: 0.88 });
+            const altarTrim = makeMaterial(0x4c3c45, { roughness: 0.75 });
+            const velvetBurgundy = makeMaterial(0x381224, { roughness: 0.94 });
+            const candleWax = makeMaterial(0xd7cdb5, { roughness: 0.6 });
+            const candleFlame = new THREE.MeshBasicMaterial({ color: 0xffaa44 });
+
+            // Basamento octogonal escalonado de piedra
+            addBox(group, 0.94, 0.14, 0.76, altarTrim, 0, 0.07, 0);
+            const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.22, 8), altarStone);
+            pedestal.position.y = 0.23;
+            group.add(pedestal);
+
+            // Mesa del altar (mensa de piedra maciza)
+            addBox(group, 0.88, 0.12, 0.66, altarTrim, 0, 0.42, 0);
+            // Paño frontal litúrgico bordado (antependium)
+            addBox(group, 0.82, 0.32, 0.04, velvetBurgundy, 0, 0.24, 0.34);
+            addBox(group, 0.84, 0.03, 0.05, makeMaterial(0x72562c, { metalness: 0.35 }), 0, 0.38, 0.34);
+
+            // Símbolo distintivo tallado según object.idx
+            if (object.idx === 0) {
+                // Símbolo: SOL (disco de oro viejo con rayos en relieve)
+                const sunDisc = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.11, 0.11, 0.03, 16),
+                    makeMaterial(0xc0953d, { metalness: 0.6, roughness: 0.32 })
+                );
+                sunDisc.rotation.x = Math.PI / 2;
+                sunDisc.position.set(0, 0.24, 0.37);
+                group.add(sunDisc);
+                const sunRing = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.15, 0.016, 6, 16),
+                    makeMaterial(0xdab04e, { metalness: 0.5 })
+                );
+                sunRing.position.set(0, 0.24, 0.37);
+                group.add(sunRing);
+            } else if (object.idx === 1) {
+                // Símbolo: LUNA (creciente lunar de plata antigua)
+                const moonMesh = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.12, 0.03, 8, 18, Math.PI * 1.3),
+                    makeMaterial(0xa0aeb8, { metalness: 0.65, roughness: 0.3 })
+                );
+                moonMesh.position.set(0, 0.24, 0.37);
+                moonMesh.rotation.z = Math.PI * 0.35;
+                group.add(moonMesh);
+            } else if (object.idx === 2) {
+                // Símbolo: CRUZ (cruz gótica de hierro forjado y bronce)
+                const crossMat = makeMaterial(0x7c5a38, { metalness: 0.5, roughness: 0.4 });
+                addBox(group, 0.05, 0.26, 0.03, crossMat, 0, 0.24, 0.37);
+                addBox(group, 0.2, 0.05, 0.03, crossMat, 0, 0.28, 0.37);
+            }
+
+            // Pequeños cirios votivos sobre el altar
+            for (const cx of [-0.34, 0.34]) {
+                addBox(group, 0.06, 0.04, 0.06, makeMaterial(0x503b22, { metalness: 0.4 }), cx, 0.5, 0.18);
+                const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.14, 6), candleWax);
+                wax.position.set(cx, 0.59, 0.18);
+                group.add(wax);
+                const candleF = new THREE.Mesh(new THREE.OctahedronGeometry(0.026, 1), candleFlame);
+                candleF.position.set(cx, 0.69, 0.18);
+                group.add(candleF);
+            }
+
+            // Llama / Cristal místico flotante (isFlame = true obligatorio para la lógica)
+            const flame = new THREE.Mesh(
+                new THREE.OctahedronGeometry(0.28, 1),
+                makeMaterial(0x9c5ab4, { emissive: 0x5b1f80, emissiveIntensity: 1.25, roughness: 0.2 })
+            );
             flame.position.y = 0.78;
             flame.userData.isFlame = true;
-            group.add(base, top, flame);
-            const light = new THREE.PointLight(0x9c5ab4, 4, 3.4);
-            light.position.y = 1.1;
+            group.add(flame);
+
+            // Luz mística del altar
+            const light = new THREE.PointLight(0x9c5ab4, 3.8, 3.6);
+            light.position.y = 1.05;
+            light.userData.isAltarLight = true;
             group.add(light);
         } else if (object.type === 'morgue_exit') {
             const frame = makeMaterial(0x53615d, { metalness: 0.72, roughness: 0.34 });
@@ -985,7 +1321,7 @@ export class GameRenderer3D {
             const exitLight = new THREE.PointLight(0x57e89e, 1.2, 3.8, 2);
             exitLight.position.set(0, 1.92, 0.46);
             group.add(exitLight);
-        } else if (object.type === 'l1_door' || object.type === 'chapel_exit') {
+        } else if (object.type === 'l1_door') {
             if (object.type === 'l1_door' && this._isLevel1Gameplay) {
                 const doorMesh = createExitDoorMesh(THREE, false);
                 group.add(doorMesh);
@@ -999,6 +1335,28 @@ export class GameRenderer3D {
                 glyph.position.set(0, 1.28, 0.24);
                 group.add(glyph);
             }
+        } else if (object.type === 'chapel_exit') {
+            const stoneArch = makeMaterial(0x32282d, { roughness: 0.88 });
+            const woodDoor = makeMaterial(0x231713, { roughness: 0.92 });
+            const ironHinges = makeMaterial(0x19181a, { metalness: 0.78, roughness: 0.32 });
+
+            addBox(group, 1.26, 2.45, 0.32, stoneArch, 0, 1.22, 0);
+            addBox(group, 0.16, 2.38, 0.12, stoneArch, -0.56, 1.2, 0.14);
+            addBox(group, 0.16, 2.38, 0.12, stoneArch, 0.56, 1.2, 0.14);
+            addBox(group, 0.88, 2.16, 0.11, woodDoor, 0, 1.1, 0.16);
+            addBox(group, 0.04, 2.16, 0.04, ironHinges, 0, 1.1, 0.22);
+
+            for (const hy of [0.46, 1.12, 1.78]) {
+                addBox(group, 0.78, 0.05, 0.03, ironHinges, 0, hy, 0.22);
+            }
+            addBox(group, 0.56, 0.07, 0.06, ironHinges, 0, 1.02, 0.23);
+
+            const glyph = new THREE.Mesh(
+                new THREE.TorusGeometry(0.26, 0.026, 8, 28),
+                makeMaterial(0xdfae62, { emissive: 0x8a591e, emissiveIntensity: 1.15 })
+            );
+            glyph.position.set(0, 1.36, 0.24);
+            group.add(glyph);
         } else if (object.type === 'anomaly') {
             const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.31, 1), makeMaterial(0xd9ac4b, { emissive: 0x855316, emissiveIntensity: 1.5, roughness: 0.24 }));
             core.position.y = 0.8;
@@ -1028,10 +1386,13 @@ export class GameRenderer3D {
         const profiles = {
             stalker: { color: 0x62594b, emissive: 0x2b2118, aura: 0xc89e63, scale: 0.92 },
             crawler: { color: 0x497c6d, emissive: 0x0a332a, aura: 0x72f5d3, scale: 1.04 },
-            screamer: { color: 0x7f2420, emissive: 0x48100e, aura: 0xb32d27, scale: 1.24 }
+            screamer: { color: 0x6e1b20, emissive: 0x3d0b11, aura: 0xa82236, scale: 1.28 }
         };
         const profile = profiles[type] ?? profiles.screamer;
-        const aura = new THREE.Mesh(new THREE.TorusGeometry(type === 'crawler' ? 0.9 : type === 'screamer' ? 0.76 : 0.62, 0.035, 8, 40), new THREE.MeshBasicMaterial({ color: profile.aura, transparent: true, opacity: 0.54 }));
+        const aura = new THREE.Mesh(
+            new THREE.TorusGeometry(type === 'crawler' ? 0.9 : type === 'screamer' ? 0.78 : 0.62, type === 'screamer' ? 0.04 : 0.035, 8, 40),
+            new THREE.MeshBasicMaterial({ color: profile.aura, transparent: true, opacity: 0.54 })
+        );
         aura.rotation.x = Math.PI / 2;
         aura.position.y = 0.12;
         const bodyMaterial = new THREE.MeshStandardMaterial({ color: profile.color, emissive: profile.emissive, emissiveIntensity: 1.45, roughness: 0.34, transparent: true, opacity: type === 'stalker' ? 0.7 : 0.9 });
@@ -1049,6 +1410,7 @@ export class GameRenderer3D {
         let eyes = [];
         let mouth = null;
         let tendrils = [];
+        let skinMaterial = null;
 
         if (type === 'crawler') {
             body.rotation.x = 0;
@@ -1102,19 +1464,113 @@ export class GameRenderer3D {
             }
             eyes = [-0.11, 0.11].map((x) => addGhostPart(new THREE.SphereGeometry(0.048, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffd08b }), x, 1.56, -0.245));
         } else {
-            addGhostPart(new THREE.ConeGeometry(0.62, 1.7, 10, 4), robeMaterial, 0, 0.83, 0, [1, 1, 0.78]);
-            addGhostPart(new THREE.SphereGeometry(0.42, 20, 16), bodyMaterial, 0, 1.56, 0, [0.86, 1.12, 0.72]);
-            addGhostPart(new THREE.ConeGeometry(0.47, 0.5, 9), robeMaterial, 0, 1.87, 0.02, [1, 0.7, 0.86]);
+            // El Gritón: Espectro gótico de La Capilla
+            skinMaterial = makeMaterial(0xd8d1c7, { roughness: 0.92, emissive: 0x1c1417, emissiveIntensity: 0.35 });
+            const darkRobe = robeMaterial;
+            const ironChain = makeMaterial(0x1a191d, { metalness: 0.82, roughness: 0.3 });
+
+            // 1. Túnica principal rasgada (silueta alta y esbelta con caída gótica)
+            addGhostPart(new THREE.CylinderGeometry(0.32, 0.64, 1.84, 8), darkRobe, 0, 0.86, 0, [1, 1, 0.8]);
+            // Manto fúnebre superior sobre el torso
+            addGhostPart(new THREE.ConeGeometry(0.56, 1.12, 8), bodyMaterial, 0, 1.18, 0, [1.08, 1, 0.86]);
+
+            // 2. Faldones andrajados y jirones inferiores colgantes
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const shred = addGhostPart(
+                    new THREE.ConeGeometry(0.11, 0.46, 4),
+                    darkRobe,
+                    Math.cos(angle) * 0.44,
+                    0.12 + (i % 2) * 0.07,
+                    Math.sin(angle) * 0.36
+                );
+                shred.rotation.z = Math.cos(angle) * 0.22;
+                shred.rotation.x = Math.sin(angle) * 0.22;
+                tendrils.push(shred);
+            }
+
+            // 3. Estola litúrgica rasgada colgando del pecho
             for (const side of [-1, 1]) {
-                const arm = addGhostPart(new THREE.CapsuleGeometry(0.11, 0.64, 4, 8), bodyMaterial, side * 0.47, 0.92, -0.05);
-                arm.rotation.z = side * 0.58;
+                const stole = addGhostPart(new THREE.BoxGeometry(0.08, 0.96, 0.024), darkRobe, side * 0.12, 0.8, -0.27);
+                stole.rotation.z = side * 0.04;
+                tendrils.push(stole);
+            }
+
+            // 4. Cabeza cadavérica demacrada (rostro pálido y perturbador)
+            addGhostPart(new THREE.SphereGeometry(0.36, 14, 12), skinMaterial, 0, 1.55, -0.02, [0.84, 1.14, 0.76]);
+            // Pómulos y quijada huesuda angulada
+            addGhostPart(new THREE.BoxGeometry(0.24, 0.2, 0.16), skinMaterial, 0, 1.44, -0.16);
+
+            // 5. Capucha gótica en penumbra envolviendo la cabeza
+            addGhostPart(new THREE.ConeGeometry(0.48, 0.65, 8), darkRobe, 0, 1.84, 0.04, [1, 0.76, 0.92]);
+            addGhostPart(new THREE.CylinderGeometry(0.38, 0.44, 0.42, 8, 1, true), darkRobe, 0, 1.62, 0.02, [1, 1, 0.9]);
+
+            // 6. Corona de espinas / halo corrupto de hierro oscuro
+            const crown = addGhostPart(new THREE.TorusGeometry(0.26, 0.022, 6, 14), ironChain, 0, 1.88, 0.02);
+            crown.rotation.x = Math.PI / 2;
+            for (let t = 0; t < 5; t++) {
+                const ta = (t * Math.PI * 2) / 5;
+                const thorn = addGhostPart(new THREE.ConeGeometry(0.022, 0.11, 4), ironChain, Math.cos(ta) * 0.26, 1.93, Math.sin(ta) * 0.26 + 0.02);
+                thorn.rotation.z = -Math.cos(ta) * 0.4;
+                thorn.rotation.x = Math.sin(ta) * 0.4;
+            }
+
+            // 7. Brazos alargados con mangas anchas y garras espectrales
+            for (const side of [-1, 1]) {
+                const arm = addGhostPart(new THREE.CapsuleGeometry(0.08, 0.66, 4, 8), skinMaterial, side * 0.45, 0.94, -0.06);
+                arm.rotation.z = side * 0.54;
+                const sleeve = addGhostPart(new THREE.ConeGeometry(0.18, 0.52, 6), darkRobe, side * 0.42, 0.88, -0.04);
+                sleeve.rotation.z = side * 0.35;
+                tendrils.push(sleeve);
+                if (side === 1) {
+                    const chainLink = addGhostPart(new THREE.TorusGeometry(0.065, 0.018, 6, 8), ironChain, side * 0.64, 0.52, -0.12);
+                    chainLink.rotation.y = Math.PI / 3;
+                }
+                addGhostPart(new THREE.SphereGeometry(0.055, 6, 6), skinMaterial, side * 0.66, 0.48, -0.12);
                 for (let finger = 0; finger < 3; finger++) {
-                    addGhostPart(new THREE.ConeGeometry(0.045, 0.28, 5), robeMaterial, side * (0.68 + finger * 0.055), 0.42, -0.13 + finger * 0.1).rotation.z = side * 0.12;
+                    const claw = addGhostPart(
+                        new THREE.ConeGeometry(0.03, 0.26, 4),
+                        skinMaterial,
+                        side * (0.64 + finger * 0.05),
+                        0.36,
+                        -0.15 + finger * 0.09
+                    );
+                    claw.rotation.z = side * 0.18;
+                    claw.rotation.x = 0.28;
                 }
             }
-            eyes = [-0.16, 0.16].map((x) => addGhostPart(new THREE.SphereGeometry(0.06, 9, 8), new THREE.MeshBasicMaterial({ color: 0xffe6a1 }), x, 1.61, -0.285));
-            mouth = addGhostPart(new THREE.SphereGeometry(0.14, 12, 10), new THREE.MeshBasicMaterial({ color: 0x160908 }), 0, 1.35, -0.31, [0.66, 1.7, 0.38]);
-            const innerMouth = addGhostPart(new THREE.SphereGeometry(0.062, 8, 8), new THREE.MeshBasicMaterial({ color: 0xd74c3d }), 0, 1.34, -0.34, [0.62, 1.4, 0.3]);
+
+            // 8. Ojos ardientes carmesí en cuencas oscuras profundas
+            for (const eyeX of [-0.14, 0.14]) {
+                addGhostPart(new THREE.SphereGeometry(0.055, 8, 6), new THREE.MeshBasicMaterial({ color: 0x140506 }), eyeX, 1.6, -0.25);
+            }
+            eyes = [-0.14, 0.14].map((x) =>
+                addGhostPart(
+                    new THREE.SphereGeometry(0.042, 8, 8),
+                    new THREE.MeshBasicMaterial({ color: 0xff1e28 }),
+                    x,
+                    1.6,
+                    -0.27
+                )
+            );
+
+            // 9. Boca desencajada y cavidad carmesí palpitante
+            mouth = addGhostPart(
+                new THREE.SphereGeometry(0.13, 12, 10),
+                new THREE.MeshBasicMaterial({ color: 0x0f0405 }),
+                0,
+                1.33,
+                -0.29,
+                [0.64, 1.8, 0.36]
+            );
+            const innerMouth = addGhostPart(
+                new THREE.SphereGeometry(0.065, 8, 8),
+                new THREE.MeshBasicMaterial({ color: 0xe62828 }),
+                0,
+                1.32,
+                -0.32,
+                [0.6, 1.45, 0.3]
+            );
             innerMouth.userData.mouthGlow = true;
         }
 
@@ -1124,7 +1580,7 @@ export class GameRenderer3D {
         const light = new THREE.PointLight(profile.aura, type === 'stalker' ? 2.2 : type === 'crawler' ? 5.2 : 4.5, type === 'stalker' ? 3.5 : type === 'crawler' ? 6 : 5);
         light.position.y = type === 'crawler' ? 0.72 : 1.05;
         group.add(light);
-        group.userData = { type, aura, body, bodyMaterial, robeMaterial, eyes, mouth, tendrils, light, profile, walkPhase: 0, lastX: null, lastY: null };
+    group.userData = { type, aura, body, bodyMaterial, robeMaterial, eyes, mouth, tendrils, light, profile, skinMaterial, walkPhase: 0, lastX: null, lastY: null };
         this.actorRoot.add(group);
         return group;
     }
@@ -1153,7 +1609,7 @@ export class GameRenderer3D {
         const moods = {
             1: { fog: 0x050403, sky: 0x040303, density: 0.018, ambient: 0x161311, moon: 0x22262a, ambientIntensity: 1.7, moonIntensity: 2.1, exposure: 0.92 },
             2: { fog: 0x050a0b, sky: 0x030708, density: 0.018, ambient: 0x526361, moon: 0x405957, ambientIntensity: 0.12, moonIntensity: 0.08, exposure: 1.12 },
-            3: { fog: 0x160d11, sky: 0x140c10, density: 0.01, ambient: 0xb9a1a4, moon: 0xd19c88, ambientIntensity: 1.7, moonIntensity: 2.1, exposure: 1.08 }
+            3: { fog: 0x120710, sky: 0x0a040b, density: 0.012, ambient: 0x8f687a, moon: 0xbd6474, ambientIntensity: 1.7, moonIntensity: 2.1, exposure: 1.14 }
         }[level];
         if (!moods) return;
         this.scene.background.setHex(moods.sky);
@@ -1330,6 +1786,11 @@ export class GameRenderer3D {
                 }
             }
             if (data.isFleeing) ghost.userData.body.rotation.z = Math.sin(frame.animTime * 12) * 0.18;
+            if (ghost.userData.tendrils?.length) {
+                ghost.userData.tendrils.forEach((tendril, ti) => {
+                    tendril.rotation.z += Math.sin(frame.animTime * 3.2 + ti) * 0.005;
+                });
+            }
             if (ghost.userData.mouth) {
                 const warningPulse = data.aiState === 'windup' ? 0.5 + Math.sin(frame.animTime * 17) * 0.5 : 0;
                 ghost.userData.mouth.scale.y = data.isCharging
@@ -1345,6 +1806,10 @@ export class GameRenderer3D {
             ghost.userData.bodyMaterial.color.setHex(color);
             ghost.userData.bodyMaterial.emissive.setHex(data.isStunned ? 0x1e7280 : data.type === 'crawler' ? 0x0c6159 : data.type === 'stalker' ? 0x594127 : 0x681511);
             ghost.userData.robeMaterial.color.copy(ghost.userData.bodyMaterial.color).multiplyScalar(0.58);
+            if (ghost.userData.skinMaterial) {
+                ghost.userData.skinMaterial.color.setHex(data.isStunned ? 0x88d9ea : 0xd8d1c7);
+                ghost.userData.skinMaterial.emissive.setHex(data.isStunned ? 0x1a5866 : 0x1c1417);
+            }
             ghost.userData.aura.material.color.setHex(color);
             ghost.userData.light.color.setHex(color);
             ghost.userData.light.intensity = data.type === 'crawler'
@@ -1376,6 +1841,9 @@ export class GameRenderer3D {
                         child.material.emissive.setHex(active ? 0x2a8759 : 0x5b1f80);
                         child.rotation.y += 0.012;
                         child.position.y = 0.78 + Math.sin(frame.animTime * 4 + object.idx) * 0.06;
+                    }
+                    if (child.userData.isAltarLight) {
+                        child.color.setHex(active ? 0x8fe0b9 : 0x9c5ab4);
                     }
                 });
             }
