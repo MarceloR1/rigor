@@ -9,7 +9,11 @@
     "preview": "vite preview",
     "lint": "eslint js/",
     "test": "npm run test:equivalence",
-    "test:equivalence": "node tests/equivalence-test.mjs"
+    "test:equivalence": "node tests/equivalence-test.mjs",
+    "test:visual": "node tests/visual-regression.mjs --compare",
+    "test:visual:capture": "node tests/visual-regression.mjs",
+    "test:styles": "node tests/computed-styles.mjs --compare",
+    "test:styles:capture": "node tests/computed-styles.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"

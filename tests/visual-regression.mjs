@@ -24,8 +24,22 @@ const COMPARE_MODE = process.argv.includes('--compare');
 const VIEWPORTS = [
   { name: 'mobile',    width: 390,  height: 844  },
   { name: 'tablet',    width: 768,  height: 1024 },
+  { name: 'tablet-tall', width: 800, height: 1100 },
   { name: 'desktop',   width: 1440, height: 900  },
 ];
+
+const DESKTOP_ONLY = new Set([
+  'hud-sanity-low',
+  'hud-sanity-critical',
+  'hud-battery-low',
+  'hud-radar-warning',
+  'hud-radar-critical',
+  'hud-damage-flash',
+  'menu-start-hover',
+  'menu-start-focus',
+  'game-over-restart-hover',
+  'game-over-restart-focus',
+]);
 
 const SCREENS = [
   {
@@ -121,6 +135,127 @@ const SCREENS = [
       await page.waitForTimeout(400);
     },
   },
+  {
+    name: 'hud-sanity-low',
+    setup: async (page) => {
+      await page.waitForSelector('#character-select-screen', { state: 'visible', timeout: 5000 });
+      await page.evaluate(() => {
+        document.getElementById('character-select-screen').classList.add('hidden');
+        const hud = document.getElementById('hud');
+        hud.classList.remove('hidden');
+        hud.classList.add('sanity-low');
+      });
+      await page.waitForTimeout(400);
+    },
+  },
+  {
+    name: 'hud-sanity-critical',
+    setup: async (page) => {
+      await page.waitForSelector('#character-select-screen', { state: 'visible', timeout: 5000 });
+      await page.evaluate(() => {
+        document.getElementById('character-select-screen').classList.add('hidden');
+        const hud = document.getElementById('hud');
+        hud.classList.remove('hidden');
+        hud.classList.add('sanity-critical');
+      });
+      await page.waitForTimeout(400);
+    },
+  },
+  {
+    name: 'hud-battery-low',
+    setup: async (page) => {
+      await page.waitForSelector('#character-select-screen', { state: 'visible', timeout: 5000 });
+      await page.evaluate(() => {
+        document.getElementById('character-select-screen').classList.add('hidden');
+        const hud = document.getElementById('hud');
+        hud.classList.remove('hidden');
+        hud.classList.add('battery-low');
+      });
+      await page.waitForTimeout(400);
+    },
+  },
+  {
+    name: 'hud-radar-warning',
+    setup: async (page) => {
+      await page.waitForSelector('#character-select-screen', { state: 'visible', timeout: 5000 });
+      await page.evaluate(() => {
+        document.getElementById('character-select-screen').classList.add('hidden');
+        const hud = document.getElementById('hud');
+        hud.classList.remove('hidden');
+        hud.dataset.threat = 'warning';
+      });
+      await page.waitForTimeout(400);
+    },
+  },
+  {
+    name: 'hud-radar-critical',
+    setup: async (page) => {
+      await page.waitForSelector('#character-select-screen', { state: 'visible', timeout: 5000 });
+      await page.evaluate(() => {
+        document.getElementById('character-select-screen').classList.add('hidden');
+        const hud = document.getElementById('hud');
+        hud.classList.remove('hidden');
+        hud.dataset.threat = 'critical';
+      });
+      await page.waitForTimeout(400);
+    },
+  },
+  {
+    name: 'hud-damage-flash',
+    setup: async (page) => {
+      await page.waitForSelector('#character-select-screen', { state: 'visible', timeout: 5000 });
+      await page.addStyleTag({
+        content: '#hud.hud-hit::after { animation: none !important; opacity: 1 !important; }',
+      });
+      await page.evaluate(() => {
+        document.getElementById('character-select-screen').classList.add('hidden');
+        const hud = document.getElementById('hud');
+        hud.classList.remove('hidden');
+        hud.classList.add('hud-hit');
+      });
+      await page.waitForTimeout(300);
+    },
+  },
+  {
+    name: 'menu-start-hover',
+    setup: async (page) => {
+      await page.waitForSelector('#start-game', { state: 'visible', timeout: 5000 });
+      await page.hover('#start-game');
+      await page.waitForTimeout(400);
+    },
+  },
+  {
+    name: 'menu-start-focus',
+    setup: async (page) => {
+      await page.waitForSelector('#start-game', { state: 'visible', timeout: 5000 });
+      await page.focus('#start-game');
+      await page.waitForTimeout(400);
+    },
+  },
+  {
+    name: 'game-over-restart-hover',
+    setup: async (page) => {
+      await page.waitForSelector('#character-select-screen', { state: 'visible', timeout: 5000 });
+      await page.evaluate(() => {
+        document.getElementById('character-select-screen').classList.add('hidden');
+        document.getElementById('game-over-screen').classList.remove('hidden');
+      });
+      await page.hover('#game-over-restart');
+      await page.waitForTimeout(400);
+    },
+  },
+  {
+    name: 'game-over-restart-focus',
+    setup: async (page) => {
+      await page.waitForSelector('#character-select-screen', { state: 'visible', timeout: 5000 });
+      await page.evaluate(() => {
+        document.getElementById('character-select-screen').classList.add('hidden');
+        document.getElementById('game-over-screen').classList.remove('hidden');
+      });
+      await page.focus('#game-over-restart');
+      await page.waitForTimeout(400);
+    },
+  },
 ];
 
 let viteProcess = null;
@@ -153,6 +288,7 @@ async function captureScreenshots(outputDir) {
     });
 
     for (const screen of SCREENS) {
+      if (DESKTOP_ONLY.has(screen.name) && vp.name !== 'desktop') continue;
       const page = await context.newPage();
       await page.goto(devServerUrl, { waitUntil: 'networkidle' });
 

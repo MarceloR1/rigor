@@ -4,3 +4,5 @@ dist/
 .claude/tests/visual-current/
 docs/
 tests/visual-current/
+tests/visual-diff/
+tests/computed-styles-current.json
