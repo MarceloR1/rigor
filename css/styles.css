@@ -222,7 +222,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--amber); outline
 #candles-container { min-height: 42px; align-items: center; }
 .hud-vitals > div { padding-bottom: 4px; }
 .hud-vitals > div:last-child { padding-bottom: 0; }
-.hud-meter-track { height: 8px !important; min-height: 8px; margin-top: 5px; border-color: rgba(218,214,199,.22); border-radius: 1px !important; background: #080a09; }
+.hud-meter-track { height: 8px; min-height: 8px; margin-top: 5px; border-color: rgba(218,214,199,.22); border-radius: 1px; background: #080a09; }
 #sanity-bar, #battery-bar { min-width: 0; border-radius: 1px !important; transition: width .2s linear, filter .2s ease; }
 #sanity-bar { background: linear-gradient(90deg,#568daa,#92c6b4) !important; box-shadow: 0 0 8px rgba(100,184,188,.3); }
 #battery-bar { background: linear-gradient(90deg,#4d9c75,#a2c97d) !important; box-shadow: 0 0 8px rgba(107,193,135,.25); }
