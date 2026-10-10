@@ -67,7 +67,6 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--amber); outline
     overscroll-behavior: contain;
 }
 
-.main-menu.hidden { display: none; }
 .main-menu::before, .main-menu::after, .menu-grain { position: fixed; inset: 0; pointer-events: none; }
 .main-menu::before {
     content: '';
