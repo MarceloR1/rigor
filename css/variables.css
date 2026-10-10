@@ -1,0 +1,25 @@
+/* ======================== 1. VARIABLES ======================== */
+:root {
+    color-scheme: dark;
+    --ink: #08090a;
+    --panel: rgba(12, 13, 14, 0.94);
+    --paper: #e7e0d4;
+    --muted: #96928a;
+    --line: rgba(223, 214, 198, 0.14);
+    --blood: #a53b31;
+    --amber: #d6a45f;
+    --mint: #7db49d;
+    --color-sangre: #a53b31;
+    --color-ambar: #d6a45f;
+    --color-menta: #7db49d;
+    --color-tinta: #08090a;
+    --color-papel: #e7e0d4;
+    --texto-caption: 10px;
+    --texto-micro: 9px;
+    --texto-nano: 8px;
+    --texto-pico: 7px;
+    --radio-sm: 2px;
+    --radio-md: 3px;
+    --mono: 'IBM Plex Mono', Consolas, monospace;
+    --display: 'Barlow Condensed', Impact, sans-serif;
+}

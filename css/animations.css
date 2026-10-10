@@ -1,0 +1,14 @@
+/* ======================= 6. ANIMACIONES ======================= */
+.shake { animation: shake .12s infinite; }
+@keyframes shake { 0%{transform:translate(2px,2px)} 20%{transform:translate(-3px,0)} 40%{transform:translate(3px,2px)} 60%{transform:translate(-2px,2px)} 80%{transform:translate(3px,-2px)} 100%{transform:translate(2px,2px)} }
+@keyframes arrive-left { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes arrive-right { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes radar-sweep { to { transform: rotate(360deg); } }
+@keyframes contact-blink { 50% { opacity: .38; } }
+@keyframes key-confirm { 0% { transform: scale(.96); } 55% { transform: scale(1.035); } 100% { transform: scale(1); } }
+@keyframes threat-pulse { 50% { box-shadow: 0 0 38px rgba(220,62,49,.28); } }
+@keyframes value-warning { 50% { opacity: .56; } }
+@keyframes sanity-vignette { 50% { opacity: .45; } }
+@keyframes damage-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes rec-flicker { 49% { opacity: 1; } 50% { opacity: .45; } 52% { opacity: 1; } }
+@keyframes prompt-arrive { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }

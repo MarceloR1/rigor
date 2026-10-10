@@ -41,7 +41,19 @@ npm run lint
 
 ```
 index.html          Documento principal, HUD, modales y pantallas
-css/styles.css      Estilos (Tailwind + custom)
+css/
+  styles.css        Entrada: @import tailwindcss + @import de las secciones (orden de cascada)
+  variables.css     1. Tokens (:root)
+  base.css          2. Reset, body, .hidden
+  layout.css        3. #game-canvas
+  components/
+    menu.css              4.1 Menú principal
+    character-select.css  4.2 Selección de personaje
+    hud.css               4.3 HUD
+    modals.css            4.4 Modales (caja fuerte, pausa, game over, victoria)
+  states.css        5. Estados (threat, sanity, battery, hit)
+  animations.css    6. Animaciones y @keyframes
+  responsive.css    7. Media queries y prefers-reduced-motion
 js/
   game.js           Lógica completa: config, audio, estado, IA, HUD, bucle
   renderer3d.js     Renderizado 3D con Three.js (no contiene lógica de juego)
