@@ -140,7 +140,7 @@
 
     <!-- Safe Keypad Modal (Level 2 Morgue) -->
     <div id="safe-modal" class="absolute inset-0 bg-black/85 backdrop-blur-sm z-40 flex items-center justify-center hidden pointer-events-auto">
-        <div class="bg-gray-900 border-2 border-red-900/90 p-6 w-80 shadow-2xl text-center space-y-4">
+        <div class="p-6 w-80 text-center space-y-4">
             <h3 class="text-red-500 font-black uppercase tracking-widest text-lg"><i class="fa-solid fa-vault mr-2"></i>CAJA FUERTE MORGUE</h3>
             <p class="text-gray-300 text-xs">Introduce el código de 4 dígitos visto en la tinta UV con la cámara REC.</p>
             <div id="safe-display" class="bg-black border-2 border-emerald-600/80 text-emerald-400 text-3xl font-mono p-3 tracking-widest h-14 flex items-center justify-center shadow-inner">
@@ -226,25 +226,25 @@
     </div>
 
     <!-- Pause Screen -->
-    <div id="pause-screen" class="absolute inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center hidden">
+    <div id="pause-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center hidden">
         <h2 class="text-5xl font-black text-red-600 tracking-widest uppercase mb-4">JUEGO EN PAUSA</h2>
         <p class="text-gray-300 text-sm mb-6 font-mono">Presiona [P] o [ESC] para reanudar la investigación.</p>
-        <button type="button" id="pause-resume" class="px-8 py-3 bg-red-800 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-widest shadow-lg transition-transform hover:scale-105">REANUDAR</button>
+        <button type="button" id="pause-resume" class="px-8 py-3 font-bold text-xs uppercase tracking-widest shadow-lg transition-transform hover:scale-105">REANUDAR</button>
     </div>
 
     <!-- Game Over Screen -->
-    <div id="game-over-screen" class="absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center hidden">
+    <div id="game-over-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center hidden">
         <h2 class="text-6xl font-black text-red-700 tracking-widest uppercase mb-3 drop-shadow-[0_0_20px_rgba(220,38,38,0.8)]">RIGOR MORTIS</h2>
         <p class="text-gray-300 text-sm max-w-md mb-8 leading-relaxed">Tus 3 velas se han apagado. La rigidez cadavérica te reclama en las sombras del edificio.</p>
-        <button type="button" id="game-over-restart" class="px-8 py-3.5 bg-red-800 hover:bg-red-700 text-white font-bold tracking-widest uppercase shadow-2xl transition-transform hover:scale-105">REINICIAR NIVEL</button>
+        <button type="button" id="game-over-restart" class="px-8 py-3.5 font-bold tracking-widest uppercase shadow-2xl transition-transform hover:scale-105">REINICIAR NIVEL</button>
     </div>
 
     <!-- Victory Screen -->
-    <div id="victory-screen" class="absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center hidden">
+    <div id="victory-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center hidden">
         <h2 class="text-5xl font-black text-emerald-500 tracking-widest uppercase mb-2">¡HAS ESCAPADO!</h2>
         <p class="text-gray-300 text-sm max-w-md mb-6">Has obtenido las 3 llaves y cruzado la puerta principal de la Capilla.</p>
         
-        <div class="bg-gray-900/90 border-2 border-emerald-800 p-6 w-80 text-left space-y-3 mb-6 text-xs font-mono shadow-2xl">
+        <div class="p-6 w-80 text-left space-y-3 mb-6 text-xs font-mono">
             <div class="flex justify-between"><span>Puntos por Llaves:</span> <span id="score-keys" class="text-emerald-400 font-bold">1500</span></div>
             <div class="flex justify-between"><span>Bonus Batería Restante:</span> <span id="score-battery" class="text-emerald-400 font-bold">500</span></div>
             <div class="flex justify-between"><span>Bonus Velas Conservadas:</span> <span id="score-candles" class="text-emerald-400 font-bold">900</span></div>
@@ -253,7 +253,7 @@
             <div class="flex justify-between text-xs text-amber-400 mt-2"><span>Récord Guardado:</span> <span id="score-record" class="text-yellow-400 font-bold">2900</span></div>
         </div>
 
-        <button type="button" id="victory-menu" class="px-8 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold tracking-widest uppercase shadow-2xl transition-transform hover:scale-105">VOLVER AL MENÚ PRINCIPAL</button>
+        <button type="button" id="victory-menu" class="px-8 py-3.5 font-bold tracking-widest uppercase shadow-2xl transition-transform hover:scale-105">VOLVER AL MENÚ PRINCIPAL</button>
     </div>
 
     <script type="module" src="js/game.js"></script>
