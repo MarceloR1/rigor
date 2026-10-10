@@ -1,7 +1,23 @@
 @import "tailwindcss";
 
+/* =============================================================
+   ÍNDICE
+   1. VARIABLES
+   2. BASE
+   3. LAYOUT
+   4. COMPONENTES
+      4.1 Menú principal
+      4.2 Selección de personaje
+      4.3 HUD
+      4.4 Modales
+   5. ESTADOS
+   6. ANIMACIONES
+   7. RESPONSIVE
+   ============================================================= */
+
 .hidden { display: none !important; }
 
+/* ======================== 1. VARIABLES ======================== */
 :root {
     color-scheme: dark;
     --ink: #08090a;
