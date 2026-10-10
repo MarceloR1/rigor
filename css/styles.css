@@ -15,8 +15,6 @@
    7. RESPONSIVE
    ============================================================= */
 
-.hidden { display: none !important; }
-
 /* ======================== 1. VARIABLES ======================== */
 :root {
     color-scheme: dark;
@@ -42,6 +40,9 @@
     --mono: 'IBM Plex Mono', Consolas, monospace;
     --display: 'Barlow Condensed', Impact, sans-serif;
 }
+
+/* ========================== 2. BASE ========================== */
+.hidden { display: none !important; }
 
 *, *::before, *::after { box-sizing: border-box; letter-spacing: 0 !important; }
 
