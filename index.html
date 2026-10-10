@@ -38,7 +38,7 @@
     <div id="hud" class="absolute inset-0 pointer-events-none z-30 p-4 md:p-6 flex flex-col justify-between hidden">
         <!-- Top Bar: Level, Candles, Battery, Sanity -->
         <div class="flex justify-between items-start gap-4">
-            <div class="bg-black/90 border-2 border-red-900/80 p-3 md:p-4 backdrop-blur-md shadow-2xl max-w-sm md:max-w-md">
+            <div class="border-2 p-3 md:p-4">
                 <h2 id="hud-level-title" class="text-red-500 font-black tracking-widest uppercase text-sm md:text-base drop-shadow">NIVEL 1: EL PASILLO</h2>
                 <p id="hud-level-desc" class="text-[11px] md:text-xs text-gray-300 mt-1 leading-relaxed">Encuentra la anomalía en el pasillo que se repite para revelar la llave.</p>
                 <div class="mt-2.5 flex items-center gap-2 md:gap-3 text-xs font-mono flex-wrap">
@@ -72,7 +72,7 @@
             </aside>
 
             <!-- Stats Container -->
-            <div id="hud-vitals" class="hud-vitals bg-black/90 border-2 border-gray-800 p-3 md:p-4 backdrop-blur-md space-y-2.5 w-52 md:w-64 shadow-2xl">
+            <div id="hud-vitals" class="hud-vitals bg-black/90 border-2 border-gray-800 p-3 md:p-4 backdrop-blur-md space-y-2.5 shadow-2xl">
                 <!-- Velas (Lives) -->
                 <div>
                     <div class="text-[11px] md:text-xs text-amber-400 font-bold mb-1 flex justify-between tracking-wider">
@@ -111,12 +111,12 @@
         </div>
 
         <!-- Center Tooltips & Interaction Prompts -->
-        <div id="interaction-prompt" class="self-center bg-black/90 border-2 border-amber-500 text-amber-200 px-6 py-3 text-xs md:text-sm font-mono tracking-widest hidden shadow-2xl animate-bounce">
+        <div id="interaction-prompt" class="self-center text-amber-200 px-6 py-3 text-xs md:text-sm font-mono tracking-widest hidden animate-bounce">
             [E] INTERACTUAR
         </div>
 
         <!-- Hide Breath Minigame Modal -->
-        <div id="breath-minigame" class="self-center bg-black/95 border-2 border-emerald-500 p-4 md:p-5 text-center hidden pointer-events-auto shadow-2xl max-w-xs md:max-w-sm">
+        <div id="breath-minigame" class="self-center p-4 md:p-5 text-center hidden pointer-events-auto">
             <p class="text-emerald-400 text-xs md:text-sm font-bold uppercase tracking-wider mb-1">
                 <i class="fa-solid fa-mask-ventilator mr-1"></i> ESCONDIDO EN EL ARMARIO
             </p>
@@ -128,7 +128,7 @@
         </div>
 
         <!-- Bottom Controls Bar -->
-        <div class="hud-controls flex justify-between items-end text-[11px] md:text-xs text-gray-300 bg-black/90 p-3 border border-gray-800 backdrop-blur-md">
+        <div class="hud-controls flex justify-between items-end text-[11px] md:text-xs text-gray-300 p-3 border">
             <div>
                 <span class="text-amber-400 font-bold">WASD</span> Moverse <span class="control-separator">/</span> <span class="text-amber-400 font-bold">RATÓN</span> Apuntar <span class="control-separator">/</span> <span class="text-amber-400 font-bold">MANTENER ESPACIO</span> Cámara UV <span class="control-separator">/</span> <span class="text-amber-400 font-bold">E</span> Interactuar <span class="control-separator">/</span> <span class="text-amber-400 font-bold">P</span> Pausa
             </div>
