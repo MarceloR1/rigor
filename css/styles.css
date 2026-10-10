@@ -217,10 +217,6 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--amber); outline
 
 /* ---------------------------- 4.3 HUD -------------------------- */
 .rec-overlay { position: fixed; inset: 0; z-index: 25; border: 8px solid rgba(6,95,70,.35); pointer-events: none; background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,.32) 50%), linear-gradient(90deg,rgba(255,0,0,.025),rgba(0,255,0,.02),rgba(0,0,255,.025)); background-size: 100% 4px, 6px 100%; box-shadow: inset 0 0 120px rgba(16,185,129,.2); }
-.shake { animation: shake .12s infinite; }
-@keyframes shake { 0%{transform:translate(2px,2px)} 20%{transform:translate(-3px,0)} 40%{transform:translate(3px,2px)} 60%{transform:translate(-2px,2px)} 80%{transform:translate(3px,-2px)} 100%{transform:translate(2px,2px)} }
-@keyframes arrive-left { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes arrive-right { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
 
 #hud { z-index: 30; padding: 25px 30px; pointer-events: none; }
 #hud:not(.hidden) { position: fixed; inset: 0; display: block; padding: 0; }
@@ -392,6 +388,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--amber); outline
 #rec-ui > div:first-child > span:nth-child(2) { animation: rec-flicker 2.3s steps(2,end) infinite; }
 #interaction-prompt:not(.hidden) { animation: prompt-arrive .28s cubic-bezier(.16,1,.3,1) both; }
 
+/* ======================= 6. ANIMACIONES ======================= */
+.shake { animation: shake .12s infinite; }
+@keyframes shake { 0%{transform:translate(2px,2px)} 20%{transform:translate(-3px,0)} 40%{transform:translate(3px,2px)} 60%{transform:translate(-2px,2px)} 80%{transform:translate(3px,-2px)} 100%{transform:translate(2px,2px)} }
+@keyframes arrive-left { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes arrive-right { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes radar-sweep { to { transform: rotate(360deg); } }
 @keyframes contact-blink { 50% { opacity: .38; } }
 @keyframes key-confirm { 0% { transform: scale(.96); } 55% { transform: scale(1.035); } 100% { transform: scale(1); } }
