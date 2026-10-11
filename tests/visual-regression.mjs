@@ -28,6 +28,31 @@ const VIEWPORTS = [
   { name: 'desktop',   width: 1440, height: 900  },
 ];
 
+// Nivel 1: EXCLUIDO explicito de este suite (plan 2b.3b).
+//
+// Estado actual demostrable: NINGUNA entrada de SCREENS invoca startGame
+// ni click('#start-game'). menu-start-hover/focus solo hacen hover/focus
+// (lineas 220-234). hud-juego, hud-rec-camera, hud-sanity-*, hud-battery-*,
+// hud-radar-*, hud-damage-flash y safe-modal se limitan a alternar
+// `hidden` por DOM en page.evaluate: no corren enterLevel(1), no cargan
+// la fachada js/level1/app/index.js, no pueblan world.walls/ghosts/
+// interactables ni dispara la maquina de ciclos. El titulo "NIVEL 1:
+// EL PASILLO" que se ve en los baselines es markup estatico de
+// index.html (#hud-level-title), no estado real del Nivel 1. Las
+// baselines actuales pasan de forma "vacia": prueban el DOM/CSS del HUD,
+// no el render ni la logica del Nivel 1.
+//
+// Cobertura real del Nivel 1: tests/level1-smoke.mjs maneja el flujo de
+// punta a punta (INICIAR → ciclo → fallo → salida a N2). Tests de dominio
+// en tests/level1-*.test.mjs verifican reducer y wire sin DOM. Pixel-
+// matching del canvas 3D del Nivel 1 pertenece a 2c (scare completo).
+//
+// Entradas futuras especificas de N1 deben marcarse con `isLevel1: true`
+// y seran saltadas aqui con razon registrada; NO se borran casos
+// existentes y NO se regeneran baselines (constraint del plan).
+const LEVEL1_SKIP_REASON =
+  'Nivel 1 cubierto por tests/level1-smoke.mjs (E2E) y tests/level1-*.test.mjs (dominio); pixel-matching 3D va en 2c.';
+
 const DESKTOP_ONLY = new Set([
   'hud-sanity-low',
   'hud-sanity-critical',
@@ -289,6 +314,10 @@ async function captureScreenshots(outputDir) {
 
     for (const screen of SCREENS) {
       if (DESKTOP_ONLY.has(screen.name) && vp.name !== 'desktop') continue;
+      if (screen.isLevel1) {
+        console.log(`  [SKIP:L1] ${screen.name}@${vp.name}: ${LEVEL1_SKIP_REASON}`);
+        continue;
+      }
       const page = await context.newPage();
       await page.goto(devServerUrl, { waitUntil: 'networkidle' });
 

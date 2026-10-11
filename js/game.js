@@ -1,4 +1,4 @@
-import { CONFIG, CHARACTERS } from './config.js';
+import { CONFIG, CHARACTERS, LEVEL_W, LEVEL_H } from './config.js';
 import { audio } from './audio.js';
 import { state, player, viewport, world, session } from './state.js';
 import { updateHUD, triggerScreenShake } from './hud.js';
@@ -6,6 +6,7 @@ import { updateGhostAI } from './entities.js';
 import { loadLevel } from './levels.js';
 import { initInteractions, checkInteraction, typeSafeDigit, closeSafeModal, clearSafeDisplay, submitSafeCode } from './interactions.js';
 import { updateCamera, updateSanity, updatePlayerMovement } from './player.js';
+import { initTouchControls } from './touch.js';
 
 const { GameRenderer3D } = await import('./renderer3d.js');
 
@@ -16,47 +17,49 @@ let animTime = 0;
 let hudRefreshTimer = 0;
 let hudHitTimeout = null;
 let gameStarted = false;
+let touchControls = null;
 let selectedCharacterKey = 'periodista';
+let runSeed = 0; // Semilla por run; se asigna una sola vez al pulsar INICIAR.
+// Loader del Nivel 1 inyectado desde main.js (ver setLevel1Loader).
+// Permanece null mientras N1 no esta cableado y en N2/N3 operaciones
+// como `?.onPlayerMoved()` son no-op.
+let level1Wire = null;
 const sceneRenderer = new GameRenderer3D(canvas);
 
-initInteractions({ triggerVictory });
+// Exposicion para smoke/debug: ?debug3d (ver main.js). El renderer no
+// se exportaba antes; permite inspeccionar renderer.info.memory.textures,
+// buscar billboards (userData.spriteId) y medir ms/frame reales.
+// Guard: el harness de equivalencia carga game.js sin window.location,
+// asi que verificamos su existencia antes de leerla.
+if (
+    typeof window !== 'undefined' &&
+    window.location &&
+    new window.URLSearchParams(window.location.search).has('debug3d')
+) {
+    window.__rigorSceneRenderer = sceneRenderer;
+}
+
+export function setLevel1Loader(wire) {
+    level1Wire = wire;
+    level1Wire.prefetch();
+}
+
+export function getRunSeed() {
+    return runSeed;
+}
+
+initInteractions({
+    triggerVictory,
+    emitAnomaly: (shape) => level1Wire?.emitAnomaly(shape),
+    leaveLevel1: () => level1Wire?.leave(),
+});
 
 function resizeCanvas() {
-    const previousWidth = viewport.width;
-    const previousHeight = viewport.height;
     viewport.width = window.innerWidth;
     viewport.height = window.innerHeight;
-    const scaleX = viewport.width / previousWidth;
-    const scaleY = viewport.height / previousHeight;
-
-    if (gameStarted && previousWidth && previousHeight) {
-        player.x *= scaleX;
-        player.y *= scaleY;
-        world.walls.forEach((wall) => {
-            wall.x *= scaleX;
-            wall.y *= scaleY;
-            wall.w *= scaleX;
-            wall.h *= scaleY;
-        });
-        world.interactables.forEach((object) => {
-            object.x *= scaleX;
-            object.y *= scaleY;
-        });
-        world.ghosts.forEach((ghost) => {
-            ghost.x *= scaleX;
-            ghost.y *= scaleY;
-            if (ghost.lastKnown) {
-                ghost.lastKnown.x *= scaleX;
-                ghost.lastKnown.y *= scaleY;
-            }
-            ghost.path?.forEach((point) => {
-                point.x *= scaleX;
-                point.y *= scaleY;
-            });
-        });
-    }
-
     sceneRenderer.resize(viewport.width, viewport.height);
+    level1Wire?.onResize();
+    touchControls?.updateVisibility(gameStarted, state.isPaused);
     if (!gameStarted) render();
 }
 
@@ -98,7 +101,7 @@ window.addEventListener('keyup', (e) => {
 });
 
 const pauseOnFocusLoss = () => {
-    keys = {};
+    for (const k in keys) delete keys[k];
     if (gameStarted && !state.isPaused && !document.getElementById('hud').classList.contains('hidden')) togglePause();
 };
 window.addEventListener('blur', pauseOnFocusLoss);
@@ -110,6 +113,23 @@ canvas.addEventListener('mousemove', (e) => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
 });
+
+if (typeof initTouchControls !== 'undefined') {
+    touchControls = initTouchControls({
+        canvas,
+        keys,
+        onInteract: () => {
+            if (!state.isPaused) checkInteraction();
+        },
+        onTogglePause: togglePause,
+        setMousePos: (screenX, screenY) => {
+            const dx = screenX - window.innerWidth / 2;
+            const dy = screenY - window.innerHeight / 2;
+            mouse.x = player.x + dx;
+            mouse.y = player.y + dy;
+        },
+    });
+}
 
 document.querySelectorAll('[data-character]').forEach((button) => {
     button.addEventListener('click', () => chooseCharacter(button.dataset.character));
@@ -163,22 +183,40 @@ function startGame() {
     session.selectedChar = CHARACTERS[selectedCharacterKey];
     state.maxBattery = session.selectedChar.maxBattery;
     state.battery = session.selectedChar.maxBattery;
+    // Date.now UNICO del flujo: semilla por run (correccion 3 de 2b.3).
+    runSeed = (Date.now() >>> 0) || 1;
     document.getElementById('character-badge').innerText = `PERSONAJE: ${session.selectedChar.name}`;
     document.getElementById('character-select-screen').classList.add('hidden');
     document.getElementById('hud').classList.remove('hidden');
     gameStarted = true;
-    loadLevel(1);
+    touchControls?.updateVisibility(true, false);
+    enterLevel(1);
     requestAnimationFrame(gameLoop);
 }
 
+// Salida unica del Nivel 1: delega en level1Wire.leave (vive en
+// wire.js). Rutas de salida cubiertas: transicion N1->N2 (l1_door via
+// puerto leaveLevel1 en initInteractions), reinicio tras game over
+// (restartCurrentLevel -> enterLevel) y re-entrada a cualquier nivel.
+// La ruta victoria->menu usa location.reload y descarta el proceso.
+function enterLevel(lvl) {
+    level1Wire?.leave();
+    if (lvl === 1) {
+        level1Wire?.enter();
+        return;
+    }
+    loadLevel(lvl);
+}
+
 function update(delta) {
-    if (state.isPaused || !document.getElementById('safe-modal').classList.contains('hidden')) return;
+    if (state.isPaused || state.levelLoading || !document.getElementById('safe-modal').classList.contains('hidden')) return;
     animTime += delta;
     const frameScale = delta * 60;
 
     updateCamera(delta, keys);
 
     const playerMoving = updatePlayerMovement(delta, frameScale, keys);
+    level1Wire?.onPlayerMoved();
 
     player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
 
@@ -208,6 +246,7 @@ function takeDamage() {
 
     if (state.candles <= 0) {
         state.isPaused = true;
+        touchControls?.updateVisibility(false, true);
         document.getElementById('hud').classList.add('hidden');
         document.getElementById('game-over-screen').classList.remove('hidden');
     }
@@ -221,11 +260,13 @@ function togglePause() {
     )
         return;
     state.isPaused = !state.isPaused;
+    touchControls?.updateVisibility(true, state.isPaused);
     document.getElementById('pause-screen').classList.toggle('hidden', !state.isPaused);
 }
 
 function triggerVictory() {
     state.isPaused = true;
+    touchControls?.updateVisibility(false, true);
     document.getElementById('hud').classList.add('hidden');
     document.getElementById('victory-screen').classList.remove('hidden');
 
@@ -250,14 +291,18 @@ function restartCurrentLevel() {
     state.sanity = 100;
     state.battery = state.maxBattery;
     state.isPaused = false;
+    touchControls?.updateVisibility(true, false);
     document.getElementById('game-over-screen').classList.add('hidden');
     document.getElementById('hud').classList.remove('hidden');
-    loadLevel(state.currentLevel);
+    enterLevel(state.currentLevel);
 }
 
 
 function render() {
     const menuPreview = !gameStarted;
+    const useFixedDims = !menuPreview && state.currentLevel !== 1;
+    const frameW = useFixedDims ? LEVEL_W : viewport.width;
+    const frameH = useFixedDims ? LEVEL_H : viewport.height;
     const previewWalls = menuPreview
         ? [
               { x: 0, y: viewport.height / 2 - 120, w: viewport.width, h: 25 },
@@ -274,9 +319,10 @@ function render() {
         ? { ...player, x: viewport.width * 0.27, y: viewport.height / 2, angle: 0 }
         : player;
     sceneRenderer.renderFrame({
-        width: viewport.width,
-        height: viewport.height,
+        width: frameW,
+        height: frameH,
         followCamera: !menuPreview,
+        menuPreview,
         level: state.currentLevel,
         player: previewPlayer,
         walls: previewWalls,
@@ -301,6 +347,10 @@ function render() {
         code: state.l2Code,
         altarProgress: state.l3AltarProgress,
         animTime,
+        // Expuestos para que el controlador N1 reaccione a la llave 1 y
+        // al ciclo activo (puerta normal/cadena, decals por decorLevel).
+        state,
+        loopCount: state.l1LoopCount ?? 1,
     });
 }
 

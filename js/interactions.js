@@ -5,12 +5,35 @@ import { updateHUD } from './hud.js';
 import { loadLevel } from './levels.js';
 
 let _triggerVictory = null;
+let _emitAnomaly = null;
+let _leaveLevel1 = null;
 
-export function initInteractions({ triggerVictory }) {
+/**
+ * Inicializa el modulo de interacciones con los puertos que
+ * normalmente son interactivos (victoria del juego) o especificos del
+ * Nivel 1 (emision al bus de anomalias y salida del nivel). Mantener
+ * este contrato descrito evita que interactions.js tenga una
+ * dependencia estatica de js/level1/: el bus se inyecta desde game.js
+ * y la salida del N1 se delega al mismo via leaveLevel1.
+ *
+ * leaveLevel1 debe nulificar el level1Module del lado de game.js
+ * (llamando a su onExit) ANTES de que loadLevel cambie currentLevel.
+ * Sin este puerto, l1_door → loadLevel(2) dejaria el modulo del N1
+ * vivo y onPlayerMoved seguiria despachando en N2.
+ *
+ * @param {{
+ *   triggerVictory: () => void,
+ *   emitAnomaly: (shape: string) => void,
+ *   leaveLevel1: () => void,
+ * }} ports
+ */
+export function initInteractions({ triggerVictory, emitAnomaly, leaveLevel1 }) {
     _triggerVictory = triggerVictory;
+    _emitAnomaly = emitAnomaly;
+    _leaveLevel1 = leaveLevel1;
 }
 
-function showPrompt(txt) {
+export function showPrompt(txt) {
     const el = document.getElementById('interaction-prompt');
     el.innerText = txt;
     el.classList.remove('hidden');
@@ -18,17 +41,24 @@ function showPrompt(txt) {
 }
 
 const INTERACTION_HANDLERS = {
-    anomaly() {
-        audio.playPickup();
+    l1_anomaly(item) {
+        _emitAnomaly?.(item.shape);
+    },
+    l1_key(item) {
         state.keysCollected[1] = true;
-        showPrompt('¡Anomalía identificada! Has purificado el pasillo y obtenido la LLAVE 1.');
+        audio.playPickup();
+        showPrompt('¡Has obtenido la LLAVE ANTIGUA! Ve a la puerta del sotano para escapar.');
         updateHUD();
+        const idx = world.interactables.indexOf(item);
+        if (idx !== -1) world.interactables.splice(idx, 1);
     },
     l1_door() {
         if (state.keysCollected[1]) {
+            audio.playClick();
+            _leaveLevel1?.();
             loadLevel(2);
         } else {
-            showPrompt('La puerta está atrancada. Encuentra la anomalía en el pasillo.');
+            showPrompt('La puerta del sotano esta atrancada con un candado. Encuentra la Llave Antigua.');
         }
     },
     safe() {
@@ -120,7 +150,7 @@ export function submitSafeCode() {
         state.keysCollected[2] = true;
         audio.playPickup();
         closeSafeModal();
-        showPrompt('¡Código correcto! Caja fuerte abierta. Has obtenido la LLAVE 2.');
+        showPrompt('¡Codigo correcto! Caja fuerte abierta. Has obtenido la LLAVE 2.');
         updateHUD();
         setTimeout(() => loadLevel(3), 1500);
     } else {

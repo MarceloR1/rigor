@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { createShapeMesh } from './render/mesh.js';
+import { createLevel1SceneController } from './render/level1/scene.js';
+import { createExitDoorMesh } from './render/level1/props3d.js';
 
 const WORLD_SCALE = 1 / 40;
 const WALL_HEIGHT = 1.35;
@@ -83,6 +86,8 @@ export class GameRenderer3D {
         this.flashlight.shadow.mapSize.set(512, 512);
         this.flashlight.target = this.flashlightTarget;
         this.scene.add(this.flashlight);
+        // Controlador N1 (lazy: solo se adjunta cuando frame.level === 1)
+        this.level1Scene = createLevel1SceneController(THREE);
         this.resize(this.width, this.height);
     }
 
@@ -180,8 +185,14 @@ export class GameRenderer3D {
         const worldWidth = this.width * WORLD_SCALE;
         const worldDepth = this.height * WORLD_SCALE;
         const tilt = Math.atan2(worldDepth * 0.78, worldDepth * 1.45);
-        const verticalWorld = Math.max(worldDepth * 0.58, 8);
-        const horizontalWorld = verticalWorld * aspect;
+        let verticalWorld, horizontalWorld;
+        if (aspect < 1) {
+            horizontalWorld = 13.5;
+            verticalWorld = horizontalWorld / aspect;
+        } else {
+            verticalWorld = Math.max(worldDepth * 0.58, 8);
+            horizontalWorld = verticalWorld * aspect;
+        }
         this.viewHeight = verticalWorld;
         this.viewWidth = horizontalWorld;
         this.worldWidth = worldWidth;
@@ -196,10 +207,12 @@ export class GameRenderer3D {
     }
 
     positionCamera(target) {
+        const camHeight = Math.min(26, Math.max(16, this.viewHeight * 1.5));
+        const camDepth = camHeight * 0.55;
         this.camera.position.set(
             target.x,
-            target.y + this.viewHeight * 2.5,
-            target.z + this.viewHeight * 1.34
+            target.y + camHeight,
+            target.z + camDepth
         );
         this.camera.lookAt(target.x, target.y, target.z);
     }
@@ -218,6 +231,11 @@ export class GameRenderer3D {
         this.ghostMeshes = [];
         this.interactableMeshes = [];
         this.uvClue = null;
+        // Reinicia referencias del N1 (floor + walls) y la caja de
+        // caches que level1Scene lleva atadas al worldKey anterior.
+        this._level1FloorMesh = null;
+        this._level1Walls = null;
+        this._level1DoorIdx = null;
     }
 
     makeFloorTexture(level) {
@@ -281,20 +299,14 @@ export class GameRenderer3D {
         floor.position.set(worldWidth / 2, -0.12, worldDepth / 2);
         floor.receiveShadow = true;
         this.worldRoot.add(floor);
-
+        // N1: expone el piso para que level1Scene aplique piso_parquet.jpg
+        // (idempotente, con fallback al canvas procedural si no cargo).
         if (level === 1) {
-            const carpet = new THREE.Mesh(new THREE.BoxGeometry(worldWidth, 0.035, 1.8), makeMaterial(0x51231f, { roughness: 0.95 }));
-            carpet.position.set(worldWidth / 2, -0.07, worldDepth / 2);
-            carpet.receiveShadow = true;
-            this.worldRoot.add(carpet);
-            for (const edge of [-0.88, 0.88]) {
-                const trim = new THREE.Mesh(new THREE.BoxGeometry(worldWidth, 0.018, 0.045), makeMaterial(0xb18a4d, { metalness: 0.25 }));
-                trim.position.set(worldWidth / 2, -0.045, worldDepth / 2 + edge);
-                this.worldRoot.add(trim);
-            }
-            this.addCorridorDetails(worldWidth, worldDepth);
+            this._level1FloorMesh = floor;
+            this._level1FloorWorld = { worldWidth, worldDepth };
         }
 
+        // N1 es La Residencia: level1Scene se encarga de la atmosfera 3D
         if (level === 2) this.addMorgueDetails(worldWidth, worldDepth);
         if (level === 3) this.addChapelDetails(worldWidth, worldDepth);
     }
@@ -436,6 +448,7 @@ export class GameRenderer3D {
     }
 
     createWall(wall, level) {
+        if (level === 1 && wall.role === 'l1-border') return;
         const width = wall.w * WORLD_SCALE;
         const depth = wall.h * WORLD_SCALE;
         const group = new THREE.Group();
@@ -465,6 +478,12 @@ export class GameRenderer3D {
         }
         group.position.set((wall.x + wall.w / 2) * WORLD_SCALE, 0, (wall.y + wall.h / 2) * WORLD_SCALE);
         this.worldRoot.add(group);
+        // N1: expone el muro para que level1Scene aplique pared.jpg con
+        // repeticion (el bitmap ya trae el espejo horizontal).
+        if (level === 1) {
+            if (!this._level1Walls) this._level1Walls = [];
+            this._level1Walls.push({ group, wall });
+        }
     }
 
     createInteractable(object) {
@@ -474,7 +493,13 @@ export class GameRenderer3D {
         const darkMetal = makeMaterial(0x333536, { metalness: 0.55, roughness: 0.42 });
         const stone = makeMaterial(0x58534b, { roughness: 0.9 });
 
-        if (object.type === 'safe') {
+        if (object.type === 'l1_anomaly' || object.type === 'l1_key') {
+            const mesh = createShapeMesh(THREE, object);
+            group.add(mesh);
+            if (mesh.userData?.uvIndicator) {
+                group.userData.uvIndicator = mesh.userData.uvIndicator;
+            }
+        } else if (object.type === 'safe') {
             addBox(group, 0.92, 0.86, 0.72, darkMetal, 0, 0.48, 0);
             addBox(group, 0.76, 0.68, 0.08, makeMaterial(0x5c6260, { metalness: 0.72, roughness: 0.28 }), 0, 0.49, 0.4);
             const dial = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.035, 8, 24), makeMaterial(0x9b936e, { metalness: 0.75, roughness: 0.25 }));
@@ -500,6 +525,20 @@ export class GameRenderer3D {
             const light = new THREE.PointLight(0x9c5ab4, 4, 3.4);
             light.position.y = 1.1;
             group.add(light);
+        } else if (object.type === 'l1_door' || object.type === 'chapel_exit') {
+            if (object.type === 'l1_door' && this._isLevel1Gameplay) {
+                const doorMesh = createExitDoorMesh(THREE, false);
+                group.add(doorMesh);
+                group.userData.exitDoor = doorMesh;
+            } else {
+                const frame = makeMaterial(0x6b4f3d, { roughness: 0.78 });
+                const door = makeMaterial(0x482b27, { roughness: 0.76, emissive: 0x280a08, emissiveIntensity: 0.22 });
+                addBox(group, 1.0, 2.2, 0.24, frame, 0, 1.1, 0);
+                addBox(group, 0.74, 1.94, 0.1, door, 0, 1.05, 0.17);
+                const glyph = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.025, 8, 24), makeMaterial(0xd7aa63, { emissive: 0x795120, emissiveIntensity: 1 }));
+                glyph.position.set(0, 1.28, 0.24);
+                group.add(glyph);
+            }
         } else if (object.type === 'anomaly') {
             const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.31, 1), makeMaterial(0xd9ac4b, { emissive: 0x855316, emissiveIntensity: 1.5, roughness: 0.24 }));
             core.position.y = 0.8;
@@ -511,18 +550,16 @@ export class GameRenderer3D {
             const light = new THREE.PointLight(0xd7a74c, 5, 4);
             light.position.y = 1;
             group.add(core, ring, light);
-        } else if (object.type === 'l1_door' || object.type === 'chapel_exit') {
-            const frame = makeMaterial(0x6b4f3d, { roughness: 0.78 });
-            const door = makeMaterial(0x482b27, { roughness: 0.76, emissive: 0x280a08, emissiveIntensity: 0.22 });
-            addBox(group, 1.0, 2.2, 0.24, frame, 0, 1.1, 0);
-            addBox(group, 0.74, 1.94, 0.1, door, 0, 1.05, 0.17);
-            const glyph = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.025, 8, 24), makeMaterial(0xd7aa63, { emissive: 0x795120, emissiveIntensity: 1 }));
-            glyph.position.set(0, 1.28, 0.24);
-            group.add(glyph);
+        } else {
+            // Un `interactable.type` desconocido debe fallar temprano:
+            // antes caia a un placeholder silencioso que enmascaraba un
+            // typo en los datos del nivel. Mejor error explicito con el
+            // tipo recibido.
+            throw new Error(`createInteractable: tipo desconocido "${object.type}"`);
         }
 
         group.position.set(object.x * WORLD_SCALE, 0, object.y * WORLD_SCALE);
-        this.worldRoot.add(group);
+        if (this.worldRoot) this.worldRoot.add(group);
         return group;
     }
 
@@ -604,17 +641,27 @@ export class GameRenderer3D {
 
     buildWorld(frame) {
         this.clearWorld();
-        this.buildFloor(frame.width, frame.height, frame.level);
+        this._isLevel1Gameplay = frame.level === 1 && !frame.menuPreview;
+        const floorW = this._isLevel1Gameplay ? Math.max(1200, frame.width) : frame.width;
+        const floorH = this._isLevel1Gameplay ? Math.max(720, frame.height) : frame.height;
+        this.buildFloor(floorW, floorH, frame.level);
         frame.walls.forEach((wall) => this.createWall(wall, frame.level));
         this.interactableMeshes = frame.interactables.map((object) => this.createInteractable(object));
         if (frame.level === 2) this.createUvClue(frame.code, frame.width, frame.height);
         this.applyLevelMood(frame.level);
+        // Delegacion N1: adjunta props/decals/overlays al worldRoot. Si no
+        // es N1, detach limpia; reset invalida caches por reconstruccion.
+        // En menuPreview (pre-INICIAR) NO adjuntamos el N1 para preservar
+        // los baselines: la preview solo muestra anomaly+l1_door+screamer
+        // sin luces ni props adicionales del pasillo.
+        if (this._isLevel1Gameplay) { this.level1Scene.attach(this); this.level1Scene.reset(this); }
+        else this.level1Scene.detach(this);
         this.worldKey = this.createWorldKey(frame);
     }
 
     applyLevelMood(level) {
         const moods = {
-            1: { fog: 0x11100e, sky: 0x100f0d, density: 0.009, ambient: 0xb9aa91, moon: 0xd6ba87, exposure: 1.1 },
+            1: { fog: 0x050403, sky: 0x040303, density: 0.018, ambient: 0x161311, moon: 0x22262a, exposure: 0.92 },
             2: { fog: 0x0b1718, sky: 0x0b1415, density: 0.012, ambient: 0x9db8b8, moon: 0x9bd3d0, exposure: 1.12 },
             3: { fog: 0x160d11, sky: 0x140c10, density: 0.01, ambient: 0xb9a1a4, moon: 0xd19c88, exposure: 1.08 }
         }[level];
@@ -629,8 +676,14 @@ export class GameRenderer3D {
 
     createWorldKey(frame) {
         const wallsKey = frame.walls.map(({ x, y, w, h }) => `${x},${y},${w},${h}`).join(';');
-        const objectsKey = frame.interactables.map((object) => `${object.type}:${object.idx ?? ''}`).join(';');
-        return `${frame.width}x${frame.height}:${frame.level}:${wallsKey}:${objectsKey}`;
+        // Incluimos `shape` del interactable: en N1 el shape cambia entre
+        // ciclos (retrato→muñeca→camilla) manteniendo type='l1_anomaly'.
+        // Sin esto el renderer reusaba la malla de la ciclo anterior y
+        // nunca refrescaba la textura (sprite "congelado").
+        const objectsKey = frame.interactables
+            .map((o) => `${o.type}:${o.idx ?? ''}:${o.shape ?? ''}`)
+            .join(';');
+        return `${frame.width}x${frame.height}:${frame.level}:${frame.menuPreview ? 'mp' : ''}:${wallsKey}:${objectsKey}`;
     }
 
     renderFrame(frame) {
@@ -659,10 +712,13 @@ export class GameRenderer3D {
             ? this.cameraDesiredTarget.copy(playerPosition)
             : this.cameraDesiredTarget.copy(worldCenter);
         if (followCamera) {
-            const horizontalMargin = Math.min(this.viewWidth * 0.5, this.worldWidth / 2);
-            const depthMargin = Math.min(this.viewHeight * 0.56, this.worldDepth / 2);
-            cameraTarget.x = THREE.MathUtils.clamp(cameraTarget.x, horizontalMargin, this.worldWidth - horizontalMargin);
-            cameraTarget.z = THREE.MathUtils.clamp(cameraTarget.z, depthMargin, this.worldDepth - depthMargin);
+            const isL1 = frame.level === 1 && !frame.menuPreview;
+            const boundsW = isL1 ? Math.max(1200 * WORLD_SCALE, this.worldWidth) : frame.width * WORLD_SCALE;
+            const boundsD = isL1 ? Math.max(720 * WORLD_SCALE, this.worldDepth) : frame.height * WORLD_SCALE;
+            const horizontalMargin = Math.min(this.viewWidth * 0.45, boundsW * 0.5);
+            const depthMargin = Math.min(this.viewHeight * 0.45, boundsD * 0.5);
+            cameraTarget.x = THREE.MathUtils.clamp(cameraTarget.x, horizontalMargin, Math.max(horizontalMargin, boundsW - horizontalMargin));
+            cameraTarget.z = THREE.MathUtils.clamp(cameraTarget.z, depthMargin, Math.max(depthMargin, boundsD - depthMargin));
         }
         if (followCamera && !this.cameraFollowActive) this.cameraFollowTarget.copy(cameraTarget);
         const elapsed = Math.min((performance.now() - this.cameraUpdateTime) / 1000, 0.1);
@@ -691,7 +747,10 @@ export class GameRenderer3D {
                 ghost = this.createGhost(data.type);
                 this.ghostMeshes[index] = ghost;
             }
+            const isL1Active = frame.level === 1 && !frame.menuPreview;
             ghost.visible = !data.invisible || frame.isRecCameraOn;
+            if (ghost.userData.body) ghost.userData.body.visible = !isL1Active;
+            if (ghost.userData.aura) ghost.userData.aura.visible = !isL1Active;
             const hover = data.type === 'crawler' ? 0.12 : data.type === 'stalker' ? 0.06 : 0.56;
             const bob = data.type === 'crawler' ? Math.sin(frame.animTime * 4.8 + index) * 0.035 : Math.sin(frame.animTime * 3.4 + index) * 0.11;
             const position = this.worldPosition(data.x, data.y, hover + bob);
@@ -756,6 +815,10 @@ export class GameRenderer3D {
             }
         });
 
+        // Delegacion N1 por frame: overlays (fantasma/puerta), decals,
+        // orientacion de candidatos. No-op fuera del Nivel 1.
+        // Omitido en menuPreview para preservar baselines visuales.
+        if (!frame.menuPreview) this.level1Scene.update(this, frame);
         this.renderer.render(this.scene, this.camera);
         if (this.pixelProbeEnabled && this.pixelProbeFrame++ % 15 === 0) this.capturePixelProbe();
     }
