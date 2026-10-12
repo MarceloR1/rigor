@@ -68,6 +68,14 @@ const INTERACTION_HANDLERS = {
             openSafeModal();
         }
     },
+    morgue_exit() {
+        if (state.keysCollected[2]) {
+            audio.playClick();
+            loadLevel(3);
+        } else {
+            showPrompt('La puerta esta bloqueada. Busca el codigo UV y abre la caja fuerte.');
+        }
+    },
     wardrobe() {
         state.l3Hidden = true;
         world.ghosts.forEach((ghost) => {
@@ -150,9 +158,8 @@ export function submitSafeCode() {
         state.keysCollected[2] = true;
         audio.playPickup();
         closeSafeModal();
-        showPrompt('¡Codigo correcto! Caja fuerte abierta. Has obtenido la LLAVE 2.');
+        showPrompt('Codigo correcto. LLAVE 2 obtenida. Busca la puerta de salida.');
         updateHUD();
-        setTimeout(() => loadLevel(3), 1500);
     } else {
         audio.playJumpscare();
         clearSafeDisplay();

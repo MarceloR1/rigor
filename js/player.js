@@ -6,7 +6,11 @@ import { collidesWithWalls } from './entities.js';
 export function updateCamera(delta, keys) {
     if (keys['Space'] && state.battery > 0 && !state.l3Hidden) {
         state.isRecCameraOn = true;
-        state.battery = Math.max(0, state.battery - delta * CONFIG.BATTERY_DRAIN_PER_SEC * session.selectedChar.drainRate);
+        const levelDrainMultiplier = state.currentLevel === 2 ? 0.7 : 1;
+        state.battery = Math.max(
+            0,
+            state.battery - delta * CONFIG.BATTERY_DRAIN_PER_SEC * session.selectedChar.drainRate * levelDrainMultiplier
+        );
         document.getElementById('rec-ui').classList.remove('hidden');
     } else {
         state.isRecCameraOn = false;

@@ -57,6 +57,8 @@ export const CONFIG = {
 
 export const LEVEL_W = 1200;
 export const LEVEL_H = 800;
+export const LEVEL2_W = 1300;
+export const LEVEL2_H = 880;
 
 export const CHARACTERS = {
     periodista: { name: 'El Periodista', maxBattery: 150, sanityRegen: 1.0, ghostHesitation: 1.0, drainRate: 1.0 },

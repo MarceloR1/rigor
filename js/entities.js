@@ -1,4 +1,4 @@
-import { CONFIG, LEVEL_W, LEVEL_H } from './config.js';
+import { CONFIG, LEVEL2_W, LEVEL2_H } from './config.js';
 import { state, player, world, session } from './state.js';
 
 /**
@@ -135,8 +135,9 @@ function moveGhost(ghost, targetX, targetY, currentSpeed, frameScale) {
             }) ||
             (state.currentLevel === 2 &&
                 [
-                    { x: LEVEL_W * 0.35, y: LEVEL_H * 0.32 },
-                    { x: LEVEL_W * 0.55, y: LEVEL_H * 0.68 },
+                    { x: LEVEL2_W * 0.28, y: LEVEL2_H * 0.3 },
+                    { x: LEVEL2_W * 0.46, y: LEVEL2_H * 0.68 },
+                    { x: LEVEL2_W * 0.72, y: LEVEL2_H * 0.32 },
                 ].some(
                     (bed) => Math.abs(x - bed.x) < ghost.radius + 48 && Math.abs(y - bed.y) < ghost.radius + 28
                 ));
@@ -185,23 +186,38 @@ function checkGhostDamage(ghost, onDamage) {
 
 function updateCrawler(ghost, ctx) {
     const { distance, inLight, hasLineOfSight, playerMoving } = ctx;
+    const isMorgue = state.currentLevel === 2;
+    const senseRange = CONFIG.CRAWLER_SENSE_RANGE * (isMorgue ? 1.15 : 1);
+    const movementSense = CONFIG.CRAWLER_MOVEMENT_SENSE * (isMorgue ? 1.12 : 1);
+    const closeRange = CONFIG.CRAWLER_CLOSE_RANGE * (isMorgue ? 1.1 : 1);
+    const lungeRange = CONFIG.CRAWLER_LUNGE_RANGE * (isMorgue ? 1.12 : 1);
 
     const canSensePlayer =
         !state.l3Hidden &&
-        distance < CONFIG.CRAWLER_SENSE_RANGE &&
-        ((playerMoving && distance < CONFIG.CRAWLER_MOVEMENT_SENSE) ||
+        distance < senseRange &&
+        ((playerMoving && distance < movementSense) ||
             (state.isRecCameraOn && hasLineOfSight) ||
-            distance < CONFIG.CRAWLER_CLOSE_RANGE);
+            distance < closeRange);
     ghost.hasVisual = canSensePlayer;
+
+    if (isMorgue && ghost.aiState === 'windup' && ghost.stateTimer <= 0) {
+        ghost.aiState = 'lunge';
+        ghost.stateTimer = CONFIG.CRAWLER_LUNGE_TIME * 0.9;
+        ghost.lungeCooldown = CONFIG.CRAWLER_LUNGE_COOLDOWN * 0.78;
+    } else if (ghost.aiState === 'lunge' && ghost.stateTimer <= 0) {
+        ghost.aiState = distance < 260 ? 'track' : 'search';
+        ghost.stateTimer = 0.75;
+    }
+
     if (canSensePlayer) {
         ghost.lastKnown.x = player.x;
         ghost.lastKnown.y = player.y;
-        ghost.searchTimer = CONFIG.CRAWLER_SEARCH_TIME;
-        if (distance < CONFIG.CRAWLER_LUNGE_RANGE && ghost.aiState !== 'lunge' && ghost.lungeCooldown <= 0) {
-            ghost.aiState = 'lunge';
-            ghost.stateTimer = CONFIG.CRAWLER_LUNGE_TIME;
-            ghost.lungeCooldown = CONFIG.CRAWLER_LUNGE_COOLDOWN;
-        } else if (ghost.aiState !== 'lunge') {
+        ghost.searchTimer = CONFIG.CRAWLER_SEARCH_TIME * (isMorgue ? 1.3 : 1);
+        if (distance < lungeRange && ghost.lungeCooldown <= 0 && !['windup', 'lunge'].includes(ghost.aiState)) {
+            ghost.aiState = isMorgue ? 'windup' : 'lunge';
+            ghost.stateTimer = isMorgue ? 0.38 : CONFIG.CRAWLER_LUNGE_TIME;
+            if (!isMorgue) ghost.lungeCooldown = CONFIG.CRAWLER_LUNGE_COOLDOWN;
+        } else if (!['windup', 'lunge'].includes(ghost.aiState)) {
             ghost.aiState = 'track';
         }
     } else if (ghost.aiState === 'track' && ghost.searchTimer <= 0) {
@@ -212,26 +228,30 @@ function updateCrawler(ghost, ctx) {
         }
     } else if (ghost.aiState === 'search' && ghost.stateTimer <= 0) {
         ghost.aiState = 'patrol';
-    } else if (ghost.aiState === 'lunge' && ghost.stateTimer <= 0) {
-        ghost.aiState = distance < 230 ? 'track' : 'search';
-        ghost.stateTimer = 0.85;
     }
     ghost.isStunned = inLight;
 
     let targetX = null;
     let targetY = null;
-    let currentSpeed = ghost.speed;
+    let currentSpeed = ghost.speed * (isMorgue ? 1.55 : 1);
 
-    if (ghost.aiState === 'track' || ghost.aiState === 'lunge') {
+    if (ghost.aiState === 'windup') {
+        targetX = ghost.lastKnown.x;
+        targetY = ghost.lastKnown.y;
+        currentSpeed *= isMorgue ? 0.08 : CONFIG.CRAWLER_TRACK_SPEED_MULT;
+        ghost.isCharging = true;
+    } else if (ghost.aiState === 'track' || ghost.aiState === 'lunge') {
         const target = ghost.hasVisual ? player : ghost.lastKnown;
         targetX = target.x;
         targetY = target.y;
-        currentSpeed *= ghost.aiState === 'lunge' ? CONFIG.CRAWLER_LUNGE_SPEED_MULT : CONFIG.CRAWLER_TRACK_SPEED_MULT;
+        currentSpeed *= ghost.aiState === 'lunge'
+            ? CONFIG.CRAWLER_LUNGE_SPEED_MULT * (isMorgue ? 1.45 : 1)
+            : CONFIG.CRAWLER_TRACK_SPEED_MULT * (isMorgue ? 1.3 : 1);
         ghost.isCharging = ghost.aiState === 'lunge';
     } else if (ghost.aiState === 'search') {
         targetX = ghost.lastKnown.x;
         targetY = ghost.lastKnown.y;
-        currentSpeed *= CONFIG.CRAWLER_SEARCH_SPEED_MULT;
+        currentSpeed *= CONFIG.CRAWLER_SEARCH_SPEED_MULT * (isMorgue ? 1.2 : 1);
     }
 
     return { targetX, targetY, currentSpeed };

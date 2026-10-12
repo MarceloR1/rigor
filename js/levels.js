@@ -8,7 +8,7 @@
  * importa nada de js/level1/.
  */
 
-import { LEVEL_W, LEVEL_H } from './config.js';
+import { LEVEL_W, LEVEL_H, LEVEL2_W, LEVEL2_H } from './config.js';
 import { state, player, world } from './state.js';
 import { updateHUD } from './hud.js';
 
@@ -53,16 +53,16 @@ export function loadLevel(lvl) {
     // Salimos del N1: desactivamos la atmosfera CSS (viñeta + grano).
     document.body.classList.remove('in-level-1', 'l1-accent-rojo');
 
-    const w = LEVEL_W;
-    const h = LEVEL_H;
+    const w = lvl === 2 ? LEVEL2_W : LEVEL_W;
+    const h = lvl === 2 ? LEVEL2_H : LEVEL_H;
 
     if (lvl === 2) {
         document.getElementById('hud-level-title').innerText = 'NIVEL 2: LA MORGUE';
         document.getElementById('hud-level-desc').innerText =
-            'El reptante sigue tu rastro. Revela el codigo con UV y abre la caja fuerte.';
+            'Las marcas UV señalan la caja fuerte. El reptante rastrea tus pasos y la luz de la cámara.';
         document.getElementById('hud-extra-info').classList.add('hidden');
 
-        player.x = 120;
+        player.x = w * 0.34;
         player.y = h / 2;
         state.isInvulnerable = true;
         state.invulnTimer = 2.0;
@@ -72,7 +72,8 @@ export function loadLevel(lvl) {
         world.walls.push({ x: 60, y: 60, w: 25, h: h - 145 });
         world.walls.push({ x: w - 85, y: 60, w: 25, h: h - 145 });
 
-        world.interactables.push({ type: 'safe', x: w - 160, y: 130, radius: 28, label: 'Caja Fuerte' });
+        world.interactables.push({ type: 'safe', x: w * 0.5, y: h * 0.36, radius: 28, label: 'Caja Fuerte' });
+        world.interactables.push({ type: 'morgue_exit', x: w * 0.55, y: h * 0.74, radius: 34, label: 'Puerta de salida' });
 
         world.ghosts.push({
             x: w * 0.78,

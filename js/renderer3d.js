@@ -61,6 +61,14 @@ export class GameRenderer3D {
         this.ghostMeshes = [];
         this.interactableMeshes = [];
         this.uvClue = null;
+        this.morgueLights = [];
+        this.morgueWallTexture = null;
+        this.morgueStainTexture = null;
+        this.morgueSignTexture = null;
+        this.morgueExitTexture = null;
+        this.morgueCaseboardTexture = null;
+        this.morgueAlarm = null;
+        this.morgueSurgicalLens = null;
         this.pixelProbeEnabled = new URLSearchParams(window.location.search).has('debug3d');
         this.pixelProbeFrame = 0;
 
@@ -224,6 +232,19 @@ export class GameRenderer3D {
     clearWorld() {
         disposeObjectTree(this.worldRoot);
         this.worldRoot.clear();
+        this.morgueWallTexture?.dispose();
+        this.morgueWallTexture = null;
+        this.morgueStainTexture?.dispose();
+        this.morgueStainTexture = null;
+        this.morgueSignTexture?.dispose();
+        this.morgueSignTexture = null;
+        this.morgueExitTexture?.dispose();
+        this.morgueExitTexture = null;
+        this.morgueCaseboardTexture?.dispose();
+        this.morgueCaseboardTexture = null;
+        this.morgueLights = [];
+        this.morgueAlarm = null;
+        this.morgueSurgicalLens = null;
         this.ghostMeshes.forEach((ghost) => {
             this.actorRoot.remove(ghost);
             disposeObjectTree(ghost);
@@ -245,7 +266,7 @@ export class GameRenderer3D {
         const context = textureCanvas.getContext('2d');
         const tile = {
             1: { base: '#211f1c', inset: '#282521', line: 'rgba(174, 158, 132, 0.2)' },
-            2: { base: '#263033', inset: '#2c383a', line: 'rgba(142, 191, 187, 0.24)' },
+            2: { base: '#303b3d', inset: '#384547', line: 'rgba(166, 207, 198, 0.32)' },
             3: { base: '#292221', inset: '#332927', line: 'rgba(190, 148, 127, 0.22)' }
         }[level] ?? { base: '#20201e', inset: '#242321', line: 'rgba(174, 158, 132, 0.2)' };
         context.fillStyle = tile.base;
@@ -258,14 +279,21 @@ export class GameRenderer3D {
             context.fillRect(0, 0, 128, 8);
             context.fillRect(0, 120, 128, 8);
         } else if (level === 2) {
-            for (let row = 0; row < 4; row++) {
-                for (let column = 0; column < 4; column++) {
-                    if ((row + column) % 2 === 0) context.fillRect(column * 32 + 2, row * 32 + 2, 28, 28);
+            for (let row = 0; row < 8; row++) {
+                for (let column = 0; column < 8; column++) {
+                    const wear = (row * 7 + column * 11) % 5;
+                    context.fillStyle = wear === 0 ? '#455252' : (row + column) % 2 === 0 ? '#3b494a' : '#344143';
+                    context.fillRect(column * 16 + 1, row * 16 + 1, 14, 14);
                 }
             }
-            context.fillStyle = 'rgba(150, 205, 197, 0.08)';
-            context.fillRect(8, 8, 112, 2);
-            context.fillRect(8, 118, 112, 2);
+            context.fillStyle = 'rgba(165, 204, 197, 0.12)';
+            context.fillRect(0, 0, 128, 2);
+            context.fillRect(0, 126, 128, 2);
+            context.fillStyle = 'rgba(8, 12, 12, 0.22)';
+            context.beginPath();
+            context.ellipse(88, 79, 27, 12, -0.32, 0, Math.PI * 2);
+            context.fill();
+            context.fillRect(31, 18, 2, 42);
         } else {
             context.fillRect(5, 5, 54, 118);
             context.fillRect(69, 5, 54, 118);
@@ -283,8 +311,67 @@ export class GameRenderer3D {
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(this.width / 80, this.height / 80);
+        texture.repeat.set(level === 2 ? 18 : this.width / 80, level === 2 ? 12 : this.height / 80);
         texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+        return texture;
+    }
+
+    makeMorgueWallTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#354244';
+        context.fillRect(0, 0, 256, 256);
+
+        const tileColors = ['#64706b', '#586762', '#6a7168', '#4e5d59'];
+        for (let row = 0; row < 8; row++) {
+            for (let column = 0; column < 8; column++) {
+                context.fillStyle = tileColors[(row * 3 + column * 5) % tileColors.length];
+                context.fillRect(column * 32 + 2, row * 32 + 2, 29, 29);
+                context.fillStyle = 'rgba(13, 21, 20, 0.16)';
+                context.fillRect(column * 32 + 4, row * 32 + 28, 25, 2);
+            }
+        }
+
+        const damp = context.createRadialGradient(68, 54, 4, 80, 72, 115);
+        damp.addColorStop(0, 'rgba(18, 39, 34, 0.5)');
+        damp.addColorStop(1, 'rgba(18, 39, 34, 0)');
+        context.fillStyle = damp;
+        context.fillRect(0, 0, 256, 256);
+        context.fillStyle = 'rgba(150, 187, 176, 0.12)';
+        context.fillRect(0, 188, 256, 3);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(3, 2);
+        texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+        return texture;
+    }
+
+    makeMorgueStainTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        const pool = context.createRadialGradient(125, 126, 8, 126, 126, 102);
+        pool.addColorStop(0, 'rgba(54, 8, 9, 0.9)');
+        pool.addColorStop(0.55, 'rgba(69, 11, 13, 0.7)');
+        pool.addColorStop(1, 'rgba(46, 9, 11, 0)');
+        context.fillStyle = pool;
+        context.fillRect(0, 0, 256, 256);
+        context.fillStyle = 'rgba(34, 5, 7, 0.6)';
+        for (let index = 0; index < 13; index++) {
+            const x = 46 + ((index * 67) % 164);
+            const y = 42 + ((index * 91) % 172);
+            context.beginPath();
+            context.ellipse(x, y, 3 + (index % 4) * 2, 2 + (index % 3), index * 0.37, 0, Math.PI * 2);
+            context.fill();
+        }
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
         return texture;
     }
 
@@ -293,7 +380,7 @@ export class GameRenderer3D {
         const worldDepth = height * WORLD_SCALE;
         const floor = new THREE.Mesh(
             new THREE.PlaneGeometry(worldWidth, worldDepth),
-            new THREE.MeshStandardMaterial({ map: this.makeFloorTexture(level), color: level === 2 ? 0x9aaca9 : level === 3 ? 0xa9998e : 0xffffff, roughness: 0.94, metalness: level === 2 ? 0.12 : 0.02 })
+            new THREE.MeshStandardMaterial({ map: this.makeFloorTexture(level), color: level === 2 ? 0xc1ceca : level === 3 ? 0xa9998e : 0xffffff, roughness: 0.94, metalness: level === 2 ? 0.12 : 0.02 })
         );
         floor.rotation.x = -Math.PI / 2;
         floor.position.set(worldWidth / 2, -0.12, worldDepth / 2);
@@ -312,9 +399,16 @@ export class GameRenderer3D {
     }
 
     addMorgueDetails(worldWidth, worldDepth) {
+        const firstMorgueChild = this.worldRoot.children.length;
         const steel = makeMaterial(0x465052, { metalness: 0.62, roughness: 0.4 });
         const mattress = makeMaterial(0x827b6f, { roughness: 0.86 });
-        for (const [x, z] of [[worldWidth * 0.35, worldDepth * 0.32], [worldWidth * 0.55, worldDepth * 0.68]]) {
+        this.morgueLights = [];
+        const bedLayout = [
+            [worldWidth * 0.28, worldDepth * 0.3],
+            [worldWidth * 0.46, worldDepth * 0.68],
+            [worldWidth * 0.72, worldDepth * 0.32],
+        ];
+        for (const [x, z] of bedLayout) {
             const bed = new THREE.Group();
             addBox(bed, 2.1, 0.12, 0.78, mattress, 0, 0.58, 0, true);
             for (const legX of [-0.82, 0.82]) {
@@ -328,25 +422,362 @@ export class GameRenderer3D {
             bed.position.set(x, 0, z);
             this.worldRoot.add(bed);
         }
-        const coldStrip = makeMaterial(0x78aaa5, { emissive: 0x204b4b, emissiveIntensity: 0.8, metalness: 0.22 });
-        for (const x of [worldWidth * 0.22, worldWidth * 0.5, worldWidth * 0.78]) {
+        const coldStrip = makeMaterial(0x405350, { emissive: 0x10211e, emissiveIntensity: 0.18, metalness: 0.22 });
+        for (const x of [worldWidth * 0.18, worldWidth * 0.42, worldWidth * 0.67, worldWidth * 0.86]) {
+            const fixture = new THREE.Group();
+            const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.58, 6), makeMaterial(0x1b2424));
+            cord.position.y = 2.62;
+            fixture.add(cord);
+            const housing = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.1, 0.28), makeMaterial(0x394544, { metalness: 0.42, roughness: 0.48 }));
+            housing.position.y = 2.31;
+            fixture.add(housing);
             const ceilingLamp = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.045, 0.12), coldStrip);
-            ceilingLamp.position.set(x, 2.32, worldDepth * 0.5);
-            this.worldRoot.add(ceilingLamp);
-            const lamp = new THREE.PointLight(0x8dc9c0, 1.1, 7, 2.2);
+            ceilingLamp.position.y = 2.24;
+            fixture.add(ceilingLamp);
+            fixture.position.set(x, 0, worldDepth * 0.5);
+            this.worldRoot.add(fixture);
+            const lamp = new THREE.PointLight(0x8dc9c0, 0.025, 5, 2.2);
             lamp.position.set(x, 1.95, worldDepth * 0.5);
             this.worldRoot.add(lamp);
+            this.morgueLights.push({ light: lamp, phase: x * 1.7 });
         }
         const cabinetMaterial = makeMaterial(0x354145, { metalness: 0.48, roughness: 0.48 });
-        for (const z of [worldDepth * 0.22, worldDepth * 0.78]) {
+        const cabinetPositions = [
+            [worldWidth * 0.86, worldDepth * 0.2],
+            [worldWidth * 0.86, worldDepth * 0.72],
+            [worldWidth * 0.18, worldDepth * 0.8],
+        ];
+        for (const [x, z] of cabinetPositions) {
             const cabinet = new THREE.Group();
             for (let index = 0; index < 3; index++) {
                 const drawer = addBox(cabinet, 0.82, 0.28, 0.48, cabinetMaterial, 0, index * 0.31 + 0.18, 0);
                 addBox(cabinet, 0.12, 0.035, 0.025, steel, 0, drawer.position.y, 0.25, false);
             }
-            cabinet.position.set(worldWidth * 0.86, 0, z);
+            cabinet.position.set(x, 0, z);
             this.worldRoot.add(cabinet);
         }
+
+        const prepMetal = makeMaterial(0x69746f, { metalness: 0.68, roughness: 0.34 });
+        const prepPositions = [
+            [worldWidth * 0.3, worldDepth * 0.55],
+            [worldWidth * 0.78, worldDepth * 0.82],
+        ];
+        for (const [x, z] of prepPositions) {
+            const station = new THREE.Group();
+            addBox(station, 1.5, 0.08, 0.72, prepMetal, 0, 0.82, 0);
+            for (const legX of [-0.62, 0.62]) {
+                for (const legZ of [-0.25, 0.25]) {
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.8, 7), steel);
+                    leg.position.set(legX, 0.4, legZ);
+                    station.add(leg);
+                }
+            }
+            addBox(station, 0.68, 0.38, 0.42, cabinetMaterial, 0, 0.56, 0.02);
+            for (const [toolX, toolHeight] of [[-0.42, 0.2], [-0.12, 0.28], [0.24, 0.16], [0.46, 0.24]]) {
+                const instrument = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.04, toolHeight, 7), steel);
+                instrument.position.set(toolX, 0.9 + toolHeight / 2, -0.1);
+                station.add(instrument);
+            }
+            station.position.set(x, 0, z);
+            this.worldRoot.add(station);
+        }
+
+        const oxygenTank = makeMaterial(0x465d58, { metalness: 0.62, roughness: 0.32 });
+        for (const [x, z] of [[worldWidth * 0.12, worldDepth * 0.62], [worldWidth * 0.86, worldDepth * 0.18]]) {
+            const tank = new THREE.Group();
+            const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 1.15, 12), oxygenTank);
+            cylinder.position.y = 0.66;
+            tank.add(cylinder);
+            const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), oxygenTank);
+            shoulder.position.y = 1.22;
+            shoulder.scale.y = 0.48;
+            tank.add(shoulder);
+            const valve = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.025, 6, 12), prepMetal);
+            valve.position.y = 1.36;
+            valve.rotation.x = Math.PI / 2;
+            tank.add(valve);
+            addBox(tank, 0.36, 0.08, 0.12, makeMaterial(0x9a3e35, { roughness: 0.68 }), 0, 0.82, 0.17, false);
+            tank.position.set(x, 0, z);
+            this.worldRoot.add(tank);
+        }
+
+        const pipeMaterial = makeMaterial(0x384442, { metalness: 0.72, roughness: 0.4 });
+        for (const side of [0.075, 0.925]) {
+            const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, worldDepth * 0.82, 10), pipeMaterial);
+            pipe.rotation.x = Math.PI / 2;
+            pipe.position.set(worldWidth * side, 2.42, worldDepth * 0.5);
+            this.worldRoot.add(pipe);
+            for (const z of [0.22, 0.5, 0.78]) {
+                addBox(this.worldRoot, 0.16, 0.08, 0.12, steel, worldWidth * side, 2.26, worldDepth * z, false);
+            }
+        }
+        const overheadPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, worldWidth * 0.82, 10), pipeMaterial);
+        overheadPipe.rotation.z = Math.PI / 2;
+        overheadPipe.position.set(worldWidth * 0.5, 2.54, worldDepth * 0.09);
+        this.worldRoot.add(overheadPipe);
+
+        const wasteMaterial = makeMaterial(0x542d2b, { roughness: 0.74 });
+        for (const [x, z] of [[worldWidth * 0.34, worldDepth * 0.84], [worldWidth * 0.81, worldDepth * 0.58]]) {
+            const bin = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.17, 0.58, 8), wasteMaterial);
+            body.position.y = 0.3;
+            bin.add(body);
+            const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.07, 8), prepMetal);
+            lid.position.y = 0.62;
+            bin.add(lid);
+            const biohazard = new THREE.Mesh(new THREE.OctahedronGeometry(0.095, 0), makeMaterial(0xd2b475, { emissive: 0x483116, emissiveIntensity: 0.25 }));
+            biohazard.position.set(0, 0.33, 0.175);
+            bin.add(biohazard);
+            bin.position.set(x, 0, z);
+            this.worldRoot.add(bin);
+        }
+
+        const screenFrame = makeMaterial(0x3d4945, { metalness: 0.58, roughness: 0.42 });
+        const screenFabric = new THREE.MeshStandardMaterial({ color: 0x59645f, roughness: 0.94, transparent: true, opacity: 0.68, side: THREE.DoubleSide });
+        for (const [x, z] of [[worldWidth * 0.36, worldDepth * 0.69], [worldWidth * 0.73, worldDepth * 0.43]]) {
+            const partition = new THREE.Group();
+            addBox(partition, 0.045, 1.35, 0.045, screenFrame, -0.72, 0.68, 0);
+            addBox(partition, 0.045, 1.35, 0.045, screenFrame, 0.72, 0.68, 0);
+            addBox(partition, 1.5, 0.045, 0.045, screenFrame, 0, 1.36, 0);
+            const curtain = new THREE.Mesh(new THREE.PlaneGeometry(1.42, 1.15), screenFabric);
+            curtain.position.set(0, 0.78, 0);
+            partition.add(curtain);
+            partition.position.set(x, 0, z);
+            this.worldRoot.add(partition);
+        }
+
+        const freezerMaterials = {
+            shell: makeMaterial(0x3d4b49, { metalness: 0.55, roughness: 0.46 }),
+            door: makeMaterial(0x66726d, { metalness: 0.62, roughness: 0.36 }),
+            seal: makeMaterial(0x172120, { roughness: 0.8 }),
+        };
+        const freezerPositions = [
+            [worldWidth * 0.14, worldDepth * 0.18],
+            [worldWidth * 0.14, worldDepth * 0.34],
+            [worldWidth * 0.14, worldDepth * 0.5],
+            [worldWidth * 0.14, worldDepth * 0.66],
+            [worldWidth * 0.14, worldDepth * 0.82],
+            [worldWidth * 0.86, worldDepth * 0.25],
+            [worldWidth * 0.86, worldDepth * 0.5],
+            [worldWidth * 0.86, worldDepth * 0.75],
+        ];
+        for (const [x, z] of freezerPositions) {
+            const freezer = new THREE.Group();
+            addBox(freezer, 1.12, 2.02, 0.9, freezerMaterials.shell, 0, 1.01, 0);
+            addBox(freezer, 0.94, 1.78, 0.055, freezerMaterials.door, 0, 1.01, 0.48);
+            addBox(freezer, 0.035, 1.54, 0.035, freezerMaterials.seal, 0.36, 1.01, 0.52, false);
+            for (const y of [0.4, 0.82, 1.24, 1.66]) {
+                addBox(freezer, 0.84, 0.025, 0.018, freezerMaterials.seal, 0, y, 0.52, false);
+            }
+            const indicator = new THREE.Mesh(
+                new THREE.SphereGeometry(0.045, 8, 8),
+                makeMaterial(0x91ead1, { emissive: 0x4ba88d, emissiveIntensity: 1.5 })
+            );
+            indicator.position.set(-0.34, 1.78, 0.53);
+            freezer.add(indicator);
+            const tag = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.025), makeMaterial(0x25302e));
+            tag.position.set(-0.13, 0.66, 0.53);
+            freezer.add(tag);
+            freezer.position.set(x, 0, z);
+            this.worldRoot.add(freezer);
+        }
+
+        const boardCanvas = document.createElement('canvas');
+        boardCanvas.width = 512;
+        boardCanvas.height = 320;
+        const boardContext = boardCanvas.getContext('2d');
+        boardContext.fillStyle = '#202a28';
+        boardContext.fillRect(0, 0, 512, 320);
+        boardContext.strokeStyle = '#718078';
+        boardContext.lineWidth = 10;
+        boardContext.strokeRect(8, 8, 496, 304);
+        boardContext.fillStyle = '#d2c9a6';
+        boardContext.font = '700 30px monospace';
+        boardContext.fillText('CASO 08 / AUTOPSIA', 30, 52);
+        boardContext.fillStyle = '#ad6556';
+        boardContext.font = '600 22px monospace';
+        boardContext.fillText('INGRESO: 03:17', 32, 94);
+        boardContext.fillText('IDENTIDAD: DESCONOCIDA', 32, 130);
+        boardContext.strokeStyle = '#b74338';
+        boardContext.lineWidth = 5;
+        boardContext.beginPath();
+        boardContext.moveTo(70, 190);
+        boardContext.lineTo(180, 158);
+        boardContext.lineTo(250, 216);
+        boardContext.lineTo(338, 174);
+        boardContext.lineTo(442, 205);
+        boardContext.stroke();
+        boardContext.fillStyle = '#a6b9aa';
+        boardContext.font = '500 18px monospace';
+        boardContext.fillText('NO COINCIDE CON EL REGISTRO', 32, 276);
+        this.morgueCaseboardTexture = new THREE.CanvasTexture(boardCanvas);
+        this.morgueCaseboardTexture.colorSpace = THREE.SRGBColorSpace;
+        const caseboard = new THREE.Group();
+        addBox(caseboard, 2.65, 1.72, 0.1, makeMaterial(0x303a38, { metalness: 0.42, roughness: 0.62 }), 0, 0, 0);
+        const boardFace = new THREE.Mesh(
+            new THREE.PlaneGeometry(2.43, 1.5),
+            new THREE.MeshBasicMaterial({ map: this.morgueCaseboardTexture, toneMapped: false })
+        );
+        boardFace.position.z = 0.06;
+        caseboard.add(boardFace);
+        caseboard.position.set(worldWidth * 0.78, 1.52, worldDepth * 0.085);
+        this.worldRoot.add(caseboard);
+
+        const cart = new THREE.Group();
+        const cartMetal = makeMaterial(0x6b7771, { metalness: 0.72, roughness: 0.34 });
+        addBox(cart, 0.92, 0.07, 0.62, cartMetal, 0, 0.64, 0);
+        addBox(cart, 0.82, 0.06, 0.55, cartMetal, 0, 0.22, 0);
+        for (const x of [-0.36, 0.36]) {
+            for (const z of [-0.22, 0.22]) {
+                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.58, 6), cartMetal);
+                leg.position.set(x, 0.34, z);
+                cart.add(leg);
+                const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.018, 6, 10), makeMaterial(0x151a19, { metalness: 0.25 }));
+                wheel.position.set(x, 0.08, z);
+                wheel.rotation.y = Math.PI / 2;
+                cart.add(wheel);
+            }
+        }
+        for (const [x, color] of [[-0.24, 0x6c9d94], [0, 0x9b6e54], [0.24, 0x788b68]]) {
+            const vial = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.24, 8), makeMaterial(color, { roughness: 0.3, metalness: 0.12 }));
+            vial.position.set(x, 0.79, 0);
+            cart.add(vial);
+            addBox(cart, 0.1, 0.045, 0.1, makeMaterial(0xb6b7a5, { metalness: 0.28 }), x, 0.93, 0, false);
+        }
+        cart.position.set(worldWidth * 0.17, 0, worldDepth * 0.5);
+        cart.traverse((part) => { part.castShadow = false; });
+        this.worldRoot.add(cart);
+
+        this.morgueStainTexture = this.makeMorgueStainTexture();
+        const stain = new THREE.Mesh(
+            new THREE.PlaneGeometry(2.5, 1.65),
+            new THREE.MeshBasicMaterial({ map: this.morgueStainTexture, transparent: true, opacity: 0.88, depthWrite: false, side: THREE.DoubleSide })
+        );
+        stain.rotation.x = -Math.PI / 2;
+        stain.position.set(worldWidth * 0.48, -0.025, worldDepth * 0.52);
+        this.worldRoot.add(stain);
+
+        const evidenceTrail = new THREE.MeshBasicMaterial({ map: this.morgueStainTexture, transparent: true, opacity: 0.58, depthWrite: false, side: THREE.DoubleSide });
+        for (const [xRatio, zRatio, rotation, scale] of [
+            [0.49, 0.49, -0.3, 0.82],
+            [0.54, 0.45, 0.42, 0.6],
+            [0.57, 0.4, -0.5, 0.72],
+            [0.53, 0.36, 0.25, 0.52],
+        ]) {
+            const mark = new THREE.Mesh(new THREE.PlaneGeometry(0.46 * scale, 0.28 * scale), evidenceTrail);
+            mark.rotation.set(-Math.PI / 2, 0, rotation);
+            mark.position.set(worldWidth * xRatio, -0.018, worldDepth * zRatio);
+            this.worldRoot.add(mark);
+        }
+
+        const tray = new THREE.Mesh(
+            new THREE.BoxGeometry(2.2, 0.1, 0.86),
+            makeMaterial(0x56615e, { metalness: 0.58, roughness: 0.38 })
+        );
+        tray.position.set(worldWidth * 0.48, 0.68, worldDepth * 0.52);
+        tray.castShadow = false;
+        this.worldRoot.add(tray);
+
+        const tableBase = makeMaterial(0x313b3a, { metalness: 0.64, roughness: 0.42 });
+        addBox(this.worldRoot, 0.13, 0.62, 0.14, tableBase, worldWidth * 0.48 - 0.68, 0.34, worldDepth * 0.52, false);
+        addBox(this.worldRoot, 0.13, 0.62, 0.14, tableBase, worldWidth * 0.48 + 0.68, 0.34, worldDepth * 0.52, false);
+
+        const bodyBag = new THREE.Group();
+        const shroud = makeMaterial(0x263231, { roughness: 0.94 });
+        const bagBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.21, 1.05, 5, 10), shroud);
+        bagBody.rotation.z = Math.PI / 2;
+        bagBody.position.y = 0.87;
+        bagBody.castShadow = false;
+        bodyBag.add(bagBody);
+        const faceCover = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 10), makeMaterial(0x485451, { roughness: 0.88 }));
+        faceCover.position.set(-0.73, 0.9, 0);
+        faceCover.scale.set(1.15, 0.46, 0.85);
+        bodyBag.add(faceCover);
+        const strapMaterial = makeMaterial(0x8a8d7d, { metalness: 0.16, roughness: 0.8 });
+        for (const x of [-0.38, 0.3]) {
+            addBox(bodyBag, 0.055, 0.025, 0.56, strapMaterial, x, 1.08, 0, false);
+        }
+        bodyBag.position.set(worldWidth * 0.48, 0, worldDepth * 0.52);
+        this.worldRoot.add(bodyBag);
+
+        const surgicalLamp = new THREE.Group();
+        const lampStem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.46, 8), steel);
+        lampStem.position.y = 2.73;
+        surgicalLamp.add(lampStem);
+        const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.31, 0.15, 12), makeMaterial(0x596662, { metalness: 0.6, roughness: 0.32 }));
+        lampShade.position.y = 2.44;
+        surgicalLamp.add(lampShade);
+        const lampLens = new THREE.Mesh(new THREE.CircleGeometry(0.27, 16), new THREE.MeshBasicMaterial({ color: 0x25302d }));
+        lampLens.rotation.x = -Math.PI / 2;
+        lampLens.position.y = 2.35;
+        surgicalLamp.add(lampLens);
+        this.morgueSurgicalLens = lampLens;
+        surgicalLamp.position.set(worldWidth * 0.48, 0, worldDepth * 0.52);
+        this.worldRoot.add(surgicalLamp);
+        const surgicalLight = new THREE.PointLight(0xb8f4df, 0.025, 3, 2);
+        surgicalLight.position.set(worldWidth * 0.48, 2.25, worldDepth * 0.52);
+        this.worldRoot.add(surgicalLight);
+        this.morgueLights.push({ light: surgicalLight, phase: 2.4, surgical: true });
+
+        const drainMaterial = makeMaterial(0x182120, { metalness: 0.65, roughness: 0.54 });
+        const drain = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.025, 0.18), drainMaterial);
+        drain.position.set(worldWidth * 0.31, -0.075, worldDepth * 0.52);
+        this.worldRoot.add(drain);
+        for (let index = 0; index < 5; index++) {
+            addBox(this.worldRoot, 0.025, 0.012, 0.15, steel, worldWidth * 0.31 - 0.28 + index * 0.14, -0.058, worldDepth * 0.52, false);
+        }
+
+        const signPlate = addBox(
+            this.worldRoot,
+            4.3,
+            0.78,
+            0.08,
+            makeMaterial(0x202a29, { metalness: 0.5, roughness: 0.5 }),
+            worldWidth * 0.2,
+            1.08,
+            1.88,
+            false
+        );
+        const signCanvas = document.createElement('canvas');
+        signCanvas.width = 640;
+        signCanvas.height = 128;
+        const signContext = signCanvas.getContext('2d');
+        signContext.fillStyle = '#17201f';
+        signContext.fillRect(0, 0, 640, 128);
+        signContext.fillStyle = '#a23f35';
+        signContext.fillRect(20, 20, 7, 88);
+        signContext.fillStyle = '#d3d8c8';
+        signContext.font = '700 39px sans-serif';
+        signContext.textAlign = 'left';
+        signContext.fillText('MORGUE', 48, 62);
+        signContext.fillStyle = '#8ca49c';
+        signContext.font = '500 20px monospace';
+        signContext.fillText('AUTOPSIA / SALA 02', 50, 96);
+        this.morgueSignTexture = new THREE.CanvasTexture(signCanvas);
+        this.morgueSignTexture.colorSpace = THREE.SRGBColorSpace;
+        const signFace = new THREE.Mesh(
+            new THREE.PlaneGeometry(4.02, 0.58),
+            new THREE.MeshBasicMaterial({ map: this.morgueSignTexture, toneMapped: false })
+        );
+        signFace.position.set(signPlate.position.x, signPlate.position.y, signPlate.position.z + 0.055);
+        this.worldRoot.add(signFace);
+
+        const alarmHousing = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.16, 10), steel);
+        alarmHousing.position.set(worldWidth * 0.88, 1.92, worldDepth * 0.08);
+        this.worldRoot.add(alarmHousing);
+        const alarmMaterial = makeMaterial(0xb5312b, { emissive: 0x74100d, emissiveIntensity: 0.75, roughness: 0.25 });
+        const alarmLens = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), alarmMaterial);
+        alarmLens.position.copy(alarmHousing.position);
+        alarmLens.position.y += 0.16;
+        this.worldRoot.add(alarmLens);
+        const alarmLight = new THREE.PointLight(0xe34235, 0.2, 4, 2);
+        alarmLight.position.copy(alarmLens.position);
+        this.worldRoot.add(alarmLight);
+        this.morgueAlarm = { light: alarmLight, material: alarmMaterial };
+
+        this.worldRoot.children.slice(firstMorgueChild).forEach((detail) => {
+            detail.traverse((part) => { part.castShadow = false; });
+        });
     }
 
     addChapelDetails(worldWidth, worldDepth) {
@@ -417,7 +848,7 @@ export class GameRenderer3D {
             depthWrite: false
         }));
         this.uvClue.scale.set(5.3, 1.06, 1);
-        this.uvClue.position.copy(this.worldPosition(width / 2 + 35, height / 2 + 110, 0.7));
+        this.uvClue.position.copy(this.worldPosition(width * 0.4, height * 0.42, 0.7));
         this.worldRoot.add(this.uvClue);
     }
 
@@ -429,6 +860,12 @@ export class GameRenderer3D {
         const palette = { 1: [0x34312c, 0x766348], 2: [0x394447, 0x749091], 3: [0x39302f, 0x8d6657] }[level] ?? [0x393a38, 0x77716a];
         const stone = makeMaterial(palette[0], { roughness: 0.88 });
         const trim = makeMaterial(palette[1], { roughness: 0.58, metalness: 0.16 });
+        if (level === 2) {
+            this.morgueWallTexture ??= this.makeMorgueWallTexture();
+            stone.map = this.morgueWallTexture;
+            stone.color.setHex(0xffffff);
+            stone.needsUpdate = true;
+        }
         addBox(group, width, WALL_HEIGHT, depth, stone, 0, WALL_HEIGHT / 2 - 0.1, 0);
         addBox(group, width + 0.04, 0.09, depth + 0.04, trim, 0, WALL_HEIGHT - 0.07, 0);
         addBox(group, width + 0.025, 0.075, depth + 0.03, trim, 0, 0.18, 0, false);
@@ -499,6 +936,44 @@ export class GameRenderer3D {
             const light = new THREE.PointLight(0x9c5ab4, 4, 3.4);
             light.position.y = 1.1;
             group.add(light);
+        } else if (object.type === 'morgue_exit') {
+            const frame = makeMaterial(0x53615d, { metalness: 0.72, roughness: 0.34 });
+            const door = makeMaterial(0x263330, { metalness: 0.56, roughness: 0.48 });
+            const warning = makeMaterial(0x8e3028, { emissive: 0x4f100c, emissiveIntensity: 0.55, roughness: 0.42 });
+            addBox(group, 1.34, 2.32, 0.22, frame, 0, 1.16, 0);
+            addBox(group, 1.04, 2.04, 0.08, door, 0, 1.12, 0.16);
+            addBox(group, 0.84, 0.12, 0.035, warning, 0, 1.77, 0.22, false);
+            const lock = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.035, 8, 24), makeMaterial(0x9eaaa0, { metalness: 0.82, roughness: 0.3 }));
+            lock.position.set(0, 1.08, 0.225);
+            group.add(lock);
+            const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.28, 8), frame);
+            handle.position.set(0.31, 1.05, 0.23);
+            group.add(handle);
+            const status = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), makeMaterial(0xbd4437, { emissive: 0x6c1712, emissiveIntensity: 1.2 }));
+            status.position.set(0.42, 1.82, 0.23);
+            group.add(status);
+            const signCanvas = document.createElement('canvas');
+            signCanvas.width = 256;
+            signCanvas.height = 72;
+            const signContext = signCanvas.getContext('2d');
+            signContext.fillStyle = '#11231d';
+            signContext.fillRect(0, 0, 256, 72);
+            signContext.fillStyle = '#8effc1';
+            signContext.font = '700 42px monospace';
+            signContext.textAlign = 'center';
+            signContext.textBaseline = 'middle';
+            signContext.fillText('SALIDA', 128, 37);
+            this.morgueExitTexture = new THREE.CanvasTexture(signCanvas);
+            this.morgueExitTexture.colorSpace = THREE.SRGBColorSpace;
+            const sign = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.82, 0.23),
+                new THREE.MeshBasicMaterial({ map: this.morgueExitTexture, toneMapped: false })
+            );
+            sign.position.set(0, 2.02, 0.225);
+            group.add(sign);
+            const exitLight = new THREE.PointLight(0x57e89e, 1.2, 3.8, 2);
+            exitLight.position.set(0, 1.92, 0.46);
+            group.add(exitLight);
         } else if (object.type === 'l1_door' || object.type === 'chapel_exit') {
             if (object.type === 'l1_door' && this._isLevel1Gameplay) {
                 const doorMesh = createExitDoorMesh(THREE, false);
@@ -541,11 +1016,11 @@ export class GameRenderer3D {
         const group = new THREE.Group();
         const profiles = {
             stalker: { color: 0x62594b, emissive: 0x2b2118, aura: 0xc89e63, scale: 0.92 },
-            crawler: { color: 0x526d68, emissive: 0x183c38, aura: 0x63d5bd, scale: 0.78 },
+            crawler: { color: 0x497c6d, emissive: 0x0a332a, aura: 0x72f5d3, scale: 1.04 },
             screamer: { color: 0x7f2420, emissive: 0x48100e, aura: 0xb32d27, scale: 1.24 }
         };
         const profile = profiles[type] ?? profiles.screamer;
-        const aura = new THREE.Mesh(new THREE.TorusGeometry(type === 'screamer' ? 0.76 : 0.62, 0.035, 8, 40), new THREE.MeshBasicMaterial({ color: profile.aura, transparent: true, opacity: 0.54 }));
+        const aura = new THREE.Mesh(new THREE.TorusGeometry(type === 'crawler' ? 0.9 : type === 'screamer' ? 0.76 : 0.62, 0.035, 8, 40), new THREE.MeshBasicMaterial({ color: profile.aura, transparent: true, opacity: 0.54 }));
         aura.rotation.x = Math.PI / 2;
         aura.position.y = 0.12;
         const bodyMaterial = new THREE.MeshStandardMaterial({ color: profile.color, emissive: profile.emissive, emissiveIntensity: 1.45, roughness: 0.34, transparent: true, opacity: type === 'stalker' ? 0.7 : 0.9 });
@@ -565,16 +1040,46 @@ export class GameRenderer3D {
         let tendrils = [];
 
         if (type === 'crawler') {
-            body.rotation.x = -0.92;
-            addGhostPart(new THREE.SphereGeometry(0.4, 18, 14), bodyMaterial, 0, 0.42, 0, [1.1, 0.72, 1.48]);
-            addGhostPart(new THREE.SphereGeometry(0.24, 14, 12), robeMaterial, 0, 0.52, -0.55, [1.08, 0.9, 0.85]);
-            for (const side of [-1, 1]) {
-                const arm = addGhostPart(new THREE.CapsuleGeometry(0.09, 0.55, 4, 7), bodyMaterial, side * 0.47, 0.24, -0.2, [0.82, 1, 1]);
-                arm.rotation.z = side * 0.94;
-                const claw = addGhostPart(new THREE.ConeGeometry(0.09, 0.34, 6), robeMaterial, side * 0.84, 0.1, -0.44);
-                claw.rotation.z = side * 1.24;
+            body.rotation.x = 0;
+            addGhostPart(new THREE.SphereGeometry(0.42, 20, 16), bodyMaterial, 0, 0.36, 0, [1.02, 0.72, 1.86]);
+            addGhostPart(new THREE.SphereGeometry(0.28, 16, 12), robeMaterial, 0, 0.5, -0.69, [1.12, 0.84, 0.98]);
+            addGhostPart(new THREE.ConeGeometry(0.22, 0.34, 7), robeMaterial, 0, 0.71, -0.48, [0.85, 1, 1.2]);
+
+            const bone = makeMaterial(0xa6a28e, { roughness: 0.76, metalness: 0.04 });
+            const deepSocket = new THREE.MeshBasicMaterial({ color: 0x071310 });
+            const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xa8ffe7 });
+            for (const z of [-0.42, -0.04, 0.34]) {
+                const rib = addGhostPart(new THREE.CapsuleGeometry(0.035, 0.58, 4, 6), bone, 0, 0.44, z);
+                rib.rotation.z = Math.PI / 2;
+                const spike = addGhostPart(new THREE.ConeGeometry(0.09, 0.26, 5), robeMaterial, 0, 0.77, z + 0.08);
+                spike.rotation.x = -0.16;
             }
-            eyes = [-0.105, 0.105].map((x) => addGhostPart(new THREE.SphereGeometry(0.047, 8, 8), new THREE.MeshBasicMaterial({ color: 0xa8ffdf }), x, 0.56, -0.78));
+
+            for (const x of [-0.105, 0, 0.105]) {
+                const socket = addGhostPart(new THREE.SphereGeometry(0.09, 10, 8), deepSocket, x, 0.56, -0.88);
+                socket.scale.set(1, 0.75, 0.42);
+                eyes.push(addGhostPart(new THREE.SphereGeometry(x === 0 ? 0.047 : 0.055, 10, 8), eyeMaterial, x, 0.57, -0.925));
+            }
+            mouth = addGhostPart(new THREE.SphereGeometry(0.18, 12, 10), deepSocket, 0, 0.35, -0.9, [1.15, 0.46, 0.42]);
+            const jaw = addGhostPart(new THREE.CapsuleGeometry(0.045, 0.27, 3, 6), bone, 0, 0.24, -0.86);
+            jaw.rotation.z = Math.PI / 2;
+            addGhostPart(new THREE.ConeGeometry(0.055, 0.22, 5), makeMaterial(0x9b302e, { emissive: 0x35100e, emissiveIntensity: 0.55 }), 0, 0.35, -0.97).rotation.x = Math.PI;
+
+            for (const [pair, z] of [-0.54, -0.06, 0.42].entries()) {
+                for (const side of [-1, 1]) {
+                    const arm = addGhostPart(new THREE.CapsuleGeometry(0.075, pair === 0 ? 0.66 : 0.54, 4, 7), bodyMaterial, side * 0.43, 0.22, z, [0.9, 1, 1]);
+                    arm.rotation.z = side * (pair === 0 ? 1.06 : 0.96);
+                    arm.userData.baseRotationZ = arm.rotation.z;
+                    arm.userData.phase = pair * Math.PI + (side > 0 ? Math.PI : 0);
+                    tendrils.push(arm);
+                    const joint = addGhostPart(new THREE.SphereGeometry(0.105, 8, 8), robeMaterial, side * 0.64, 0.11, z - 0.05);
+                    joint.scale.set(1, 0.78, 0.8);
+                    for (let clawIndex = -1; clawIndex <= 1; clawIndex++) {
+                        const claw = addGhostPart(new THREE.ConeGeometry(0.035, 0.2, 5), bone, side * (0.74 + Math.abs(clawIndex) * 0.035), 0.06, z - 0.17 + clawIndex * 0.11);
+                        claw.rotation.z = side * 1.24;
+                    }
+                }
+            }
         } else if (type === 'stalker') {
             addGhostPart(new THREE.ConeGeometry(0.56, 1.78, 9, 3), robeMaterial, 0, 0.89, 0, [1.05, 1, 0.76]);
             addGhostPart(new THREE.SphereGeometry(0.32, 16, 12), bodyMaterial, 0, 1.58, -0.02, [0.76, 1.22, 0.72]);
@@ -605,10 +1110,10 @@ export class GameRenderer3D {
         body.scale.setScalar(profile.scale);
         body.castShadow = true;
         group.add(aura, body);
-        const light = new THREE.PointLight(profile.aura, type === 'stalker' ? 2.2 : 4.5, type === 'stalker' ? 3.5 : 5);
-        light.position.y = type === 'crawler' ? 0.58 : 1.05;
+        const light = new THREE.PointLight(profile.aura, type === 'stalker' ? 2.2 : type === 'crawler' ? 5.2 : 4.5, type === 'stalker' ? 3.5 : type === 'crawler' ? 6 : 5);
+        light.position.y = type === 'crawler' ? 0.72 : 1.05;
         group.add(light);
-        group.userData = { type, aura, body, bodyMaterial, robeMaterial, eyes, mouth, tendrils, light, profile };
+        group.userData = { type, aura, body, bodyMaterial, robeMaterial, eyes, mouth, tendrils, light, profile, walkPhase: 0, lastX: null, lastY: null };
         this.actorRoot.add(group);
         return group;
     }
@@ -635,16 +1140,18 @@ export class GameRenderer3D {
 
     applyLevelMood(level) {
         const moods = {
-            1: { fog: 0x050403, sky: 0x040303, density: 0.018, ambient: 0x161311, moon: 0x22262a, exposure: 0.92 },
-            2: { fog: 0x0b1718, sky: 0x0b1415, density: 0.012, ambient: 0x9db8b8, moon: 0x9bd3d0, exposure: 1.12 },
-            3: { fog: 0x160d11, sky: 0x140c10, density: 0.01, ambient: 0xb9a1a4, moon: 0xd19c88, exposure: 1.08 }
+            1: { fog: 0x050403, sky: 0x040303, density: 0.018, ambient: 0x161311, moon: 0x22262a, ambientIntensity: 1.7, moonIntensity: 2.1, exposure: 0.92 },
+            2: { fog: 0x050a0b, sky: 0x030708, density: 0.018, ambient: 0x526361, moon: 0x405957, ambientIntensity: 0.12, moonIntensity: 0.08, exposure: 1.12 },
+            3: { fog: 0x160d11, sky: 0x140c10, density: 0.01, ambient: 0xb9a1a4, moon: 0xd19c88, ambientIntensity: 1.7, moonIntensity: 2.1, exposure: 1.08 }
         }[level];
         if (!moods) return;
         this.scene.background.setHex(moods.sky);
         this.scene.fog.color.setHex(moods.fog);
         this.scene.fog.density = moods.density;
         this.ambientLight.color.setHex(moods.ambient);
+        this.ambientLight.intensity = moods.ambientIntensity;
         this.moonLight.color.setHex(moods.moon);
+        this.moonLight.intensity = moods.moonIntensity;
         this.renderer.toneMappingExposure = moods.exposure;
     }
 
@@ -678,6 +1185,11 @@ export class GameRenderer3D {
             playerPosition.z + Math.sin(frame.player.angle) * 6.5
         );
         this.flashlight.visible = !frame.isHidden;
+        const isMorgue = frame.level === 2;
+        this.flashlight.intensity = isMorgue ? (frame.isRecCameraOn ? 112 : 96) : 68;
+        this.flashlight.angle = isMorgue ? 0.42 : Math.PI / 5;
+        this.flashlight.distance = isMorgue ? 18 : 15;
+        this.flashlight.penumbra = isMorgue ? 0.62 : 0.48;
         this.flashlight.color.setHex(frame.isRecCameraOn ? 0x8af1c2 : 0xffe4ad);
 
         const followCamera = Boolean(frame.followCamera);
@@ -703,8 +1215,27 @@ export class GameRenderer3D {
         this.positionCamera(this.cameraFollowTarget);
 
         if (this.uvClue) {
-            this.uvClue.material.opacity = frame.isRecCameraOn ? 1 : 0.24;
+            this.uvClue.material.opacity = frame.isRecCameraOn ? 1 : 0;
             this.uvClue.material.color.setHex(frame.isRecCameraOn ? 0xffffff : 0x28694d);
+        }
+
+        if (frame.level === 2) {
+            if (this.morgueSurgicalLens) {
+                this.morgueSurgicalLens.material.color.setHex(frame.isRecCameraOn ? 0x66d9b4 : 0x25302d);
+            }
+            const crawler = frame.ghosts.find((ghost) => ghost.type === 'crawler');
+            const threat = crawler?.aiState === 'lunge' ? 1 : crawler?.hasVisual ? 0.58 : 0;
+            for (const { light, phase, surgical } of this.morgueLights) {
+                const flicker = 0.96 + Math.sin(frame.animTime * (surgical ? 2.1 : 3.3) + phase) * (surgical ? 0.04 : 0.06);
+                const threatGlow = threat ? (surgical ? 0.12 : 0.08) : 1;
+                light.intensity = (surgical ? 0.025 : 0.015) * flicker * threatGlow;
+                light.color.setHex(threat && !surgical ? 0xc96c61 : surgical ? 0xb8f4df : 0x8dc9c0);
+            }
+            if (this.morgueAlarm) {
+                const pulse = threat ? 0.5 + (Math.sin(frame.animTime * (crawler?.aiState === 'lunge' ? 8 : 2.4)) + 1) * 0.25 : 0.12;
+                this.morgueAlarm.light.intensity = pulse * (threat ? 2.8 : 0.35);
+                this.morgueAlarm.material.emissiveIntensity = 0.3 + pulse * (threat ? 1.4 : 0.35);
+            }
         }
 
         while (this.ghostMeshes.length < frame.ghosts.length) {
@@ -725,8 +1256,22 @@ export class GameRenderer3D {
             ghost.visible = !data.invisible || frame.isRecCameraOn;
             if (ghost.userData.body) ghost.userData.body.visible = !isL1Active;
             if (ghost.userData.aura) ghost.userData.aura.visible = !isL1Active;
-            const hover = data.type === 'crawler' ? 0.12 : data.type === 'stalker' ? 0.06 : 0.56;
-            const bob = data.type === 'crawler' ? Math.sin(frame.animTime * 4.8 + index) * 0.035 : Math.sin(frame.animTime * 3.4 + index) * 0.11;
+            const previousX = ghost.userData.lastX ?? data.x;
+            const previousY = ghost.userData.lastY ?? data.y;
+            const distanceMoved = Math.hypot(data.x - previousX, data.y - previousY);
+            const isCrawler = data.type === 'crawler';
+            const isCrawlerMoving = isCrawler && (distanceMoved > 0.015 || data.aiState === 'lunge');
+            if (isCrawler) {
+                ghost.userData.walkPhase += Math.min(distanceMoved * 0.12, 1.1);
+                ghost.userData.lastX = data.x;
+                ghost.userData.lastY = data.y;
+            }
+            const hover = isCrawler ? 0.045 : data.type === 'stalker' ? 0.06 : 0.56;
+            const bob = isCrawler
+                ? isCrawlerMoving
+                    ? Math.sin(ghost.userData.walkPhase * 2) * 0.028
+                    : Math.sin(frame.animTime * 2 + index) * 0.008
+                : Math.sin(frame.animTime * 3.4 + index) * 0.11;
             const position = this.worldPosition(data.x, data.y, hover + bob);
             ghost.position.set(position.x, position.y, position.z);
             const directionX = frame.player.x - data.x;
@@ -739,6 +1284,26 @@ export class GameRenderer3D {
                 ghost.userData.profile.scale * chargingScale,
                 ghost.userData.profile.scale
             );
+            if (data.type === 'crawler') {
+                const isLunging = data.aiState === 'lunge';
+                const isWindingUp = data.aiState === 'windup';
+                const isTracking = data.aiState === 'track';
+                const gaitSpeed = isLunging ? 1.8 : isTracking ? 1.2 : 1;
+                ghost.userData.body.rotation.x = isLunging ? 0.14 : isWindingUp ? -0.025 : isTracking ? 0.015 : 0;
+                ghost.userData.body.rotation.z = Math.sin(ghost.userData.walkPhase * 2 + index) * (isCrawlerMoving ? (isLunging ? 0.2 : 0.09) : 0.025);
+                ghost.userData.tendrils.forEach((limb, limbIndex) => {
+                    const phase = limb.userData.phase ?? limbIndex * Math.PI / 2;
+                    const stride = Math.sin(ghost.userData.walkPhase * gaitSpeed + phase);
+                    const idleTwitch = Math.sin(frame.animTime * 1.7 + limbIndex) * 0.025;
+                    limb.rotation.z = limb.userData.baseRotationZ + (isCrawlerMoving ? stride * (isLunging ? 0.38 : 0.22) : idleTwitch);
+                });
+                ghost.userData.aura.material.opacity = isLunging ? 0.9 : isWindingUp ? 0.32 + Math.sin(frame.animTime * 8) * 0.08 : isTracking ? 0.7 : 0.42;
+                const eyeColor = isLunging || isWindingUp ? 0xff4e3d : frame.isRecCameraOn ? 0x9fffe4 : 0x4db594;
+                ghost.userData.eyes.forEach((eye) => eye.material.color.setHex(eyeColor));
+                if (ghost.userData.mouth) {
+                    ghost.userData.mouth.scale.y = isLunging ? 0.78 : isWindingUp ? 0.2 : 0.46;
+                }
+            }
             if (data.isFleeing) ghost.userData.body.rotation.z = Math.sin(frame.animTime * 12) * 0.18;
             if (ghost.userData.mouth) {
                 const warningPulse = data.aiState === 'windup' ? 0.5 + Math.sin(frame.animTime * 17) * 0.5 : 0;
@@ -748,16 +1313,18 @@ export class GameRenderer3D {
             }
             if (data.type === 'screamer' && data.aiState === 'windup') {
                 ghost.userData.aura.material.opacity = 0.42 + (Math.sin(frame.animTime * 17) + 1) * 0.18;
-            } else {
+            } else if (data.type !== 'crawler') {
                 ghost.userData.aura.material.opacity = data.type === 'stalker' ? 0.36 : 0.54;
             }
-            const color = data.isStunned ? 0x74d8ef : data.isFleeing ? 0xd4b486 : data.type === 'crawler' ? 0x59d9a7 : data.type === 'stalker' ? 0xb6a17e : 0xe34d41;
+            const color = data.isStunned ? 0x74d8ef : data.isFleeing ? 0xd4b486 : data.type === 'crawler' ? 0x7be8c6 : data.type === 'stalker' ? 0xb6a17e : 0xe34d41;
             ghost.userData.bodyMaterial.color.setHex(color);
-            ghost.userData.bodyMaterial.emissive.setHex(data.isStunned ? 0x1e7280 : data.type === 'crawler' ? 0x12674a : data.type === 'stalker' ? 0x594127 : 0x681511);
+            ghost.userData.bodyMaterial.emissive.setHex(data.isStunned ? 0x1e7280 : data.type === 'crawler' ? 0x0c6159 : data.type === 'stalker' ? 0x594127 : 0x681511);
             ghost.userData.robeMaterial.color.copy(ghost.userData.bodyMaterial.color).multiplyScalar(0.58);
             ghost.userData.aura.material.color.setHex(color);
             ghost.userData.light.color.setHex(color);
-            ghost.userData.light.intensity = (data.type === 'stalker' ? 2.2 : 4.2) + Math.sin(frame.animTime * 5 + index) * 0.8;
+            ghost.userData.light.intensity = data.type === 'crawler'
+                ? (data.aiState === 'lunge' ? 6.8 : data.hasVisual ? 5.4 : 4.2) + Math.sin(frame.animTime * 5 + index) * 0.6
+                : (data.type === 'stalker' ? 2.2 : 4.2) + Math.sin(frame.animTime * 5 + index) * 0.8;
         });
 
         this.interactableMeshes.forEach((mesh, index) => {

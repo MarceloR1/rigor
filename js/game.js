@@ -1,4 +1,4 @@
-import { CONFIG, CHARACTERS, LEVEL_W, LEVEL_H } from './config.js';
+import { CONFIG, CHARACTERS, LEVEL_W, LEVEL_H, LEVEL2_W, LEVEL2_H } from './config.js';
 import { audio } from './audio.js';
 import { state, player, viewport, world, session } from './state.js';
 import { updateHUD, triggerScreenShake } from './hud.js';
@@ -301,8 +301,8 @@ function restartCurrentLevel() {
 function render() {
     const menuPreview = !gameStarted;
     const useFixedDims = !menuPreview && state.currentLevel !== 1;
-    const frameW = useFixedDims ? LEVEL_W : viewport.width;
-    const frameH = useFixedDims ? LEVEL_H : viewport.height;
+    const frameW = useFixedDims ? (state.currentLevel === 2 ? LEVEL2_W : LEVEL_W) : viewport.width;
+    const frameH = useFixedDims ? (state.currentLevel === 2 ? LEVEL2_H : LEVEL_H) : viewport.height;
     const previewWalls = menuPreview
         ? [
               { x: 0, y: viewport.height / 2 - 120, w: viewport.width, h: 25 },
