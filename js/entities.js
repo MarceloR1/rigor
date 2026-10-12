@@ -118,8 +118,9 @@ function moveGhost(ghost, targetX, targetY, currentSpeed, frameScale) {
         let moveAngle = Math.atan2(targetY - ghost.y, targetX - ghost.x);
         if (ghost.isFleeing) moveAngle += Math.PI;
         const step = currentSpeed * frameScale;
+        const passesThroughWalls = state.currentLevel === 2 && ghost.type === 'crawler';
         const collides = (x, y) =>
-            world.walls.some((wall) => {
+            (!passesThroughWalls && world.walls.some((wall) => {
                 const pad = wall.isFurniture ? -4 : 0;
                 return (
                     x + ghost.radius + pad > wall.x &&
@@ -127,7 +128,7 @@ function moveGhost(ghost, targetX, targetY, currentSpeed, frameScale) {
                     y + ghost.radius + pad > wall.y &&
                     y - ghost.radius - pad < wall.y + wall.h
                 );
-            }) ||
+            })) ||
             world.interactables.some((object) => {
                 if (!['wardrobe', 'altar', 'safe'].includes(object.type)) return false;
                 const obstacleRadius = object.type === 'wardrobe' ? 34 : object.type === 'safe' ? 31 : 30;
@@ -154,7 +155,7 @@ function moveGhost(ghost, targetX, targetY, currentSpeed, frameScale) {
         }
 
         // Resolucion anti-atasco: si el fantasma quedo empujado hacia un mueble o pared, expulsarlo suavemente
-        for (const wall of world.walls) {
+        for (const wall of passesThroughWalls ? [] : world.walls) {
             const pad = wall.isFurniture ? -4 : 0;
             if (
                 ghost.x + ghost.radius + pad > wall.x &&

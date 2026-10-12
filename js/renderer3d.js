@@ -279,34 +279,45 @@ export class GameRenderer3D {
             context.fillRect(0, 0, 128, 8);
             context.fillRect(0, 120, 128, 8);
         } else if (level === 2) {
-            for (let row = 0; row < 8; row++) {
-                for (let column = 0; column < 8; column++) {
-                    const wear = (row * 7 + column * 11) % 5;
-                    context.fillStyle = wear === 0 ? '#455252' : (row + column) % 2 === 0 ? '#3b494a' : '#344143';
-                    context.fillRect(column * 16 + 1, row * 16 + 1, 14, 14);
+            const slabColors = ['#3d4948', '#354241', '#414b49', '#394544'];
+            for (let row = 0; row < 2; row++) {
+                for (let column = 0; column < 2; column++) {
+                    const x = column * 64;
+                    const y = row * 64;
+                    context.fillStyle = slabColors[(row * 3 + column * 2) % slabColors.length];
+                    context.fillRect(x + 3, y + 3, 58, 58);
+
+                    context.fillStyle = 'rgba(154, 179, 169, 0.1)';
+                    context.fillRect(x + 7, y + 7, 50, 2);
+                    context.fillStyle = 'rgba(7, 13, 13, 0.28)';
+                    context.fillRect(x + 7, y + 57, 50, 3);
+
+                    context.strokeStyle = 'rgba(15, 23, 22, 0.5)';
+                    context.lineWidth = 1;
+                    context.beginPath();
+                    context.moveTo(x + 14, y + 18);
+                    context.lineTo(x + 21, y + 24);
+                    context.lineTo(x + 18, y + 32);
+                    context.moveTo(x + 42, y + 43);
+                    context.lineTo(x + 49, y + 38);
+                    context.stroke();
                 }
             }
-            context.fillStyle = 'rgba(165, 204, 197, 0.12)';
-            context.fillRect(0, 0, 128, 2);
-            context.fillRect(0, 126, 128, 2);
-            context.fillStyle = 'rgba(8, 12, 12, 0.22)';
-            context.beginPath();
-            context.ellipse(88, 79, 27, 12, -0.32, 0, Math.PI * 2);
-            context.fill();
-            context.fillRect(31, 18, 2, 42);
         } else {
             context.fillRect(5, 5, 54, 118);
             context.fillRect(69, 5, 54, 118);
             context.fillStyle = 'rgba(158, 121, 92, 0.12)';
             context.fillRect(0, 62, 128, 4);
         }
-        context.strokeStyle = tile.line;
-        context.lineWidth = 2;
-        context.strokeRect(1, 1, 63, 63);
-        context.strokeRect(65, 65, 63, 63);
-        context.fillStyle = 'rgba(160, 147, 122, 0.12)';
-        context.fillRect(8, 9, 18, 1);
-        context.fillRect(78, 94, 23, 1);
+        if (level !== 2) {
+            context.strokeStyle = tile.line;
+            context.lineWidth = 2;
+            context.strokeRect(1, 1, 63, 63);
+            context.strokeRect(65, 65, 63, 63);
+            context.fillStyle = 'rgba(160, 147, 122, 0.12)';
+            context.fillRect(8, 9, 18, 1);
+            context.fillRect(78, 94, 23, 1);
+        }
         const texture = new THREE.CanvasTexture(textureCanvas);
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.wrapS = THREE.RepeatWrapping;
@@ -1253,9 +1264,15 @@ export class GameRenderer3D {
                 this.ghostMeshes[index] = ghost;
             }
             const isL1Active = frame.level === 1 && !frame.menuPreview;
-            ghost.visible = !data.invisible || frame.isRecCameraOn;
+            const crawlerInFlashlight = data.type === 'crawler' && data.invisible && data.isStunned && !frame.isRecCameraOn;
+            ghost.visible = !data.invisible || frame.isRecCameraOn || crawlerInFlashlight;
             if (ghost.userData.body) ghost.userData.body.visible = !isL1Active;
             if (ghost.userData.aura) ghost.userData.aura.visible = !isL1Active;
+            if (data.type === 'crawler') {
+                const apparitionOpacity = crawlerInFlashlight ? 0.3 : 0.9;
+                ghost.userData.bodyMaterial.opacity = apparitionOpacity;
+                ghost.userData.robeMaterial.opacity = apparitionOpacity * 0.74;
+            }
             const previousX = ghost.userData.lastX ?? data.x;
             const previousY = ghost.userData.lastY ?? data.y;
             const distanceMoved = Math.hypot(data.x - previousX, data.y - previousY);
@@ -1297,7 +1314,15 @@ export class GameRenderer3D {
                     const idleTwitch = Math.sin(frame.animTime * 1.7 + limbIndex) * 0.025;
                     limb.rotation.z = limb.userData.baseRotationZ + (isCrawlerMoving ? stride * (isLunging ? 0.38 : 0.22) : idleTwitch);
                 });
-                ghost.userData.aura.material.opacity = isLunging ? 0.9 : isWindingUp ? 0.32 + Math.sin(frame.animTime * 8) * 0.08 : isTracking ? 0.7 : 0.42;
+                                ghost.userData.aura.material.opacity = crawlerInFlashlight
+                                        ? 0.2
+                                        : isLunging
+                                            ? 0.9
+                                            : isWindingUp
+                                                ? 0.32 + Math.sin(frame.animTime * 8) * 0.08
+                                                : isTracking
+                                                    ? 0.7
+                                                    : 0.42;
                 const eyeColor = isLunging || isWindingUp ? 0xff4e3d : frame.isRecCameraOn ? 0x9fffe4 : 0x4db594;
                 ghost.userData.eyes.forEach((eye) => eye.material.color.setHex(eyeColor));
                 if (ghost.userData.mouth) {
@@ -1323,7 +1348,7 @@ export class GameRenderer3D {
             ghost.userData.aura.material.color.setHex(color);
             ghost.userData.light.color.setHex(color);
             ghost.userData.light.intensity = data.type === 'crawler'
-                ? (data.aiState === 'lunge' ? 6.8 : data.hasVisual ? 5.4 : 4.2) + Math.sin(frame.animTime * 5 + index) * 0.6
+                ? crawlerInFlashlight ? 0.45 : (data.aiState === 'lunge' ? 6.8 : data.hasVisual ? 5.4 : 4.2) + Math.sin(frame.animTime * 5 + index) * 0.6
                 : (data.type === 'stalker' ? 2.2 : 4.2) + Math.sin(frame.animTime * 5 + index) * 0.8;
         });
 

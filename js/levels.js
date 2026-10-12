@@ -72,6 +72,24 @@ export function loadLevel(lvl) {
         world.walls.push({ x: 60, y: 60, w: 25, h: h - 145 });
         world.walls.push({ x: w - 85, y: 60, w: 25, h: h - 145 });
 
+        const dividerThickness = 6;
+        const addDivider = (centerXRatio, centerYRatio, widthRatio, heightRatio) => {
+            world.walls.push({
+                x: w * centerXRatio - w * widthRatio / 2,
+                y: h * centerYRatio - h * heightRatio / 2,
+                w: w * widthRatio || dividerThickness,
+                h: h * heightRatio || dividerThickness,
+            });
+        };
+        for (const xRatio of [0.29, 0.71]) {
+            addDivider(xRatio, 0.245, dividerThickness / w, 0.27);
+            addDivider(xRatio, 0.755, dividerThickness / w, 0.27);
+        }
+        for (const [yRatio, secondSegmentCenter] of [[0.31, 0.64], [0.7, 0.57]]) {
+            addDivider(0.25, yRatio, 0.28, dividerThickness / h);
+            addDivider(secondSegmentCenter, yRatio, 0.28, dividerThickness / h);
+        }
+
         world.interactables.push({ type: 'safe', x: w * 0.5, y: h * 0.36, radius: 28, label: 'Caja Fuerte' });
         world.interactables.push({ type: 'morgue_exit', x: w * 0.55, y: h * 0.74, radius: 34, label: 'Puerta de salida' });
 
