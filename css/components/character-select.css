@@ -1,0 +1,53 @@
+/* ------------------- 4.2 Selección de personaje ------------------- */
+.roster { width: 100%; max-width: 665px; justify-self: end; animation: arrive-right .8s .08s both; }
+.roster-heading { align-items: end; margin-bottom: 20px; }
+.roster-heading .eyebrow { margin-bottom: 6px; }
+.roster-heading h2 { margin: 0; color: #e8e1d6; font-family: var(--display); font-size: 35px; font-weight: 600; line-height: 1; letter-spacing: 0; }
+.roster-count { padding-bottom: 4px; color: #807c73; font-size: var(--texto-micro); letter-spacing: 1px; }
+.character-list { display: grid; gap: 9px; }
+.character-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: 32px 58px 1fr 26px;
+    align-items: center;
+    width: 100%;
+    min-height: 107px;
+    padding: 15px 18px;
+    border: 1px solid rgba(220, 211, 195, .12);
+    border-left: 2px solid transparent;
+    border-radius: var(--radio-sm);
+    background: rgba(18, 19, 19, .76);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background .22s ease, border-color .22s ease, transform .22s ease;
+}
+.character-card:hover { transform: translateX(4px); border-color: rgba(220,211,195,.3); background: rgba(31,31,29,.92); }
+.character-card.is-selected { border-color: rgba(165,59,49,.62); border-left-color: #b64d3e; background: linear-gradient(90deg, rgba(103,37,31,.25), rgba(23,23,22,.92) 44%); }
+.character-index { align-self: start; padding-top: 4px; color: #79766f; font-size: var(--texto-micro); }
+.character-icon { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(213,164,95,.32); background: rgba(213,164,95,.07); color: var(--amber); font-size: 16px; }
+.character-card:nth-child(2) .character-icon { border-color: rgba(115,159,186,.34); background: rgba(115,159,186,.08); color: #91b9cf; }
+.character-card:nth-child(3) .character-icon { border-color: rgba(125,180,157,.32); background: rgba(125,180,157,.08); color: var(--mint); }
+.character-copy { display: grid; gap: 5px; min-width: 0; }
+.character-name { color: #e9e2d7; font-family: var(--display); font-size: 23px; font-weight: 600; line-height: 1; }
+.character-detail { overflow: hidden; color: #a29d94; font-size: var(--texto-caption); text-overflow: ellipsis; white-space: nowrap; }
+.character-perk { color: #d3aa71; font-size: var(--texto-micro); }
+.character-perk i { width: 14px; }
+.character-perk.perk-blue { color: #91b9cf; }
+.character-perk.perk-gold { color: #93b5a1; }
+.character-select-mark { display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid rgba(220,211,195,.2); border-radius: 50%; color: transparent; font-size: var(--texto-micro); }
+.is-selected .character-select-mark { border-color: #c56b5b; background: #9d4035; color: #f0ded1; }
+.launch-row { gap: 18px; margin-top: 23px; }
+.launch-row p { display: grid; grid-template-columns: 8px 1fr; gap: 5px 8px; margin: 0; color: #858078; font-size: var(--texto-nano); letter-spacing: 1px; }
+.launch-row p .status-light { grid-row: span 2; align-self: center; background: var(--amber); box-shadow: 0 0 10px rgba(214,164,95,.4); }
+.launch-row p strong { color: #c0b8ac; font-weight: 500; }
+.launch-button { display: flex; align-items: center; gap: 19px; min-height: 51px; padding: 0 17px; border: 1px solid #944237; border-radius: var(--radio-sm); background: #8c352c; color: #f1e7d8; font-size: var(--texto-caption); letter-spacing: 1px; cursor: pointer; transition: background .2s ease, border-color .2s ease, transform .2s ease; }
+.launch-button:hover { transform: translateY(-2px); border-color: #cb6553; background: #a44438; }
+.launch-button i { color: #e5b08c; }
+.launch-button kbd { margin-left: 3px; color: rgba(255,238,220,.72); }
+
+/* ajustes 4.2 */
+.character-card { backdrop-filter: blur(8px); }
+.character-card.is-selected { box-shadow: inset 3px 0 rgba(211,103,81,.45), 0 14px 32px rgba(0,0,0,.16); }
+.character-card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.launch-button { box-shadow: 0 8px 25px rgba(82,24,19,.25), inset 0 1px rgba(255,255,255,.08); }

@@ -1,0 +1,65 @@
+/* ======================== 7. RESPONSIVE ======================= */
+@media (min-width: 1200px) and (min-height: 740px) {
+    .menu-main { padding-top: 36px; padding-bottom: 38px; }
+    .character-card { min-height: 112px; }
+    .character-list { gap: 11px; }
+}
+
+@media (max-width: 1100px) {
+    .menu-layout { width: calc(100% - 56px); }
+    .menu-main { grid-template-columns: minmax(270px, .7fr) minmax(460px, 1.3fr); gap: 42px; padding-right: 0; padding-left: 0; }
+    .menu-intro h1 { font-size: 94px; }
+    #hud > div:first-child { top: 18px; right: 20px; left: 20px; grid-template-columns: minmax(0, min(42vw, 510px)) 124px 240px; gap: 12px; }
+    .hud-radar { width: 124px; flex-basis: 124px; }
+    .radar-scope { width: 88px; height: 88px; }
+    #hud > div:last-child { right: 20px; left: 20px; }
+}
+
+@media (max-width: 820px) {
+    html, body { overflow: auto; }
+    .menu-layout { width: calc(100% - 40px); min-height: 100dvh; padding: 18px 0; }
+    .menu-main { grid-template-columns: 1fr; gap: 34px; padding: 44px 0; }
+    .menu-intro { max-width: none; }
+    .menu-intro h1 { margin-top: 20px; font-size: 80px; }
+    .menu-subtitle { margin-top: 16px; }
+    .menu-brief { margin-top: 18px; }
+    .menu-controls { display: none; }
+    .roster { max-width: none; }
+    .character-card { min-height: 94px; }
+    .menu-footer { gap: 12px; font-size: var(--texto-pico); }
+    #hud { padding: 14px; }
+    #hud > div:first-child { top: 14px; right: 14px; left: 14px; grid-template-columns: minmax(0, 1fr) minmax(190px, 34vw); gap: 10px; }
+    #hud-radar { display: none; }
+    .hud-controls { align-items: start; }
+    .hud-controls > div:first-child { max-width: 75%; }
+    #hud > div:last-child { right: 14px; bottom: 14px; left: 14px; }
+    .menu-intro::after { display: none; }
+}
+
+@media (max-width: 520px) {
+    .system-version, .menu-footer > span:last-child { display: none; }
+    .menu-topline { font-size: var(--texto-nano); }
+    .menu-main { padding: 32px 0; }
+    .menu-intro h1 { font-size: 68px; }
+    .roster-heading h2 { font-size: 28px; }
+    .roster-count { font-size: var(--texto-pico); }
+    .character-card { grid-template-columns: 25px 42px 1fr 22px; gap: 5px; padding: 12px 9px; }
+    .character-icon { width: 34px; height: 34px; font-size: 13px; }
+    .character-name { font-size: 20px; }
+    .character-detail { font-size: var(--texto-nano); }
+    .character-perk { font-size: var(--texto-nano); }
+    .launch-row { align-items: stretch; flex-direction: column; }
+    .launch-button { justify-content: space-between; }
+    #hud > div:first-child > div:first-child { max-width: 56vw; }
+    #hud > div:first-child { top: 9px; right: 9px; left: 9px; grid-template-columns: minmax(0, 1fr) minmax(136px, 39vw); gap: 7px; }
+    #hud > div:first-child > div:first-child { max-width: none; }
+    #hud > div:first-child > .hud-vitals { width: 100%; }
+    #hud-controls, #hud > div:last-child { display: none !important; }
+    #hud-level-desc { display: none; }
+    .rec-overlay > div:nth-child(2) { top: auto; right: 14px; bottom: 14px; min-width: 0; max-width: 56vw; }
+    #pause-screen::before, #game-over-screen::before, #victory-screen::before { inset: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
