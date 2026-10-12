@@ -54,9 +54,8 @@
     #hud > div:first-child { top: 9px; right: 9px; left: 9px; grid-template-columns: minmax(0, 1fr) minmax(136px, 39vw); gap: 7px; }
     #hud > div:first-child > div:first-child { max-width: none; }
     #hud > div:first-child > .hud-vitals { width: 100%; }
-    .hud-controls { max-width: calc(100vw - 28px); flex-direction: column; }
-    .hud-controls > div:first-child { display: none; }
-    #hud > div:last-child { right: 9px; bottom: 9px; left: 9px; max-width: none; }
+    #hud-controls, #hud > div:last-child { display: none !important; }
+    #hud-level-desc { display: none; }
     .rec-overlay > div:nth-child(2) { top: auto; right: 14px; bottom: 14px; min-width: 0; max-width: 56vw; }
     #pause-screen::before, #game-over-screen::before, #victory-screen::before { inset: 12px; }
 }

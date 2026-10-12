@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint js/",
     "test": "npm run test:equivalence",
+    "test:domain": "node --test \"tests/level1-*.test.mjs\"",
     "test:equivalence": "node tests/equivalence-test.mjs",
     "test:visual": "node tests/visual-regression.mjs --compare",
     "test:visual:capture": "node tests/visual-regression.mjs",
@@ -27,6 +28,7 @@
     "playwright": "^1.63.0",
     "pngjs": "^7.0.0",
     "prettier": "^3.9.9",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "vite": "^7.1.7"
   }

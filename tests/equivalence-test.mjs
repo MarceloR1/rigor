@@ -15,6 +15,29 @@ const DELTA = 1 / 60;
 const SEED = 42;
 const VP_W = 1280;
 const VP_H = 720;
+const LVL_W = 1200;
+const LVL_H = 800;
+
+// Skip explicito del Nivel 1 por categoria (2b.3b). N1 fue reescrito
+// como fachada asincrona en js/level1/* y vive fuera de MODULE_ORDER:
+// las trazas del VM no coinciden con las del commit original. N1 queda
+// cubierto por los tests de dominio (tests/level1-*.test.mjs) y el
+// visual (test:visual + computed-styles).
+//
+// Lista de permitidos: por categoria y nivel, "allow" es true cuando
+// se compara, false cuando se salta con mensaje explicito. No es una
+// bandera general: cada entrada expresa una decision propia.
+const COMPARE_MATRIX = {
+  cat1: { 1: false, 2: true, 3: true }, // Game State
+  // cat2 (Interactions) ya era por escenario, no por nivel; su propio
+  // esquema de skip N1-dyn-specific sigue vigente en runInteractionScenarios.
+  cat3: { 1: false, 2: true, 3: true }, // HUD DOM
+  cat4: { 1: false, 2: true, 3: true }, // Audio
+  cat5: { 1: false, 2: true, 3: true }, // AI Coverage (aiStates + hits)
+  cat6: { 1: false, 2: true, 3: true }, // Renderer Frames
+};
+const SKIP_REASON = 'Level 1 reescrito en 2b; cubierto por tests de dominio y visual en 2c';
+const skippedByCat = { cat1: 0, cat3: 0, cat4: 0, cat5states: 0, cat5hits: 0, cat6: 0 };
 
 const CHAR_CONFIGS = {
   periodista: { name: 'El Periodista', maxBattery: 150, sanityRegen: 1.0, ghostHesitation: 1.0, drainRate: 1.0 },
@@ -288,40 +311,26 @@ function runFrameSimulation(label, script, htmlSource, seed) {
 function runInteractionScenarios(label, script, htmlSource) {
   const scenarios = [];
 
-  // L1: Anomaly pickup
-  {
-    const inst = createInstance(script, htmlSource, SEED);
-    inst.initGame(1);
-    inst.game.player.x = VP_W / 2; inst.game.player.y = VP_H / 2 - 95;
-    const anomalyExists = inst.game.interactables.some(i => i.type === 'anomaly');
-    inst.game.checkInteraction();
-    scenarios.push({ name: 'L1: Anomaly pickup', results: { anomalyExists, key1: inst.game.state.keysCollected[1] }, sounds: [...inst.sounds] });
-  }
+  // L1: Anomaly pickup — SKIP 2b.3 (N1 por import dinamico fuera de
+  // MODULE_ORDER; el VM no puebla `interactables` con l1_anomaly).
+  // Caso conservado como slot con resultado vacio para no deformar la
+  // longitud del arreglo entre orig y curr; reactivar al soportar la
+  // fachada del Nivel 1 en el VM del arnes.
+  scenarios.push({ name: 'L1: Anomaly pickup', results: {}, skipped: 'N1-dyn-specific' });
 
-  // L1: Door without key
-  {
-    const inst = createInstance(script, htmlSource, SEED);
-    inst.initGame(1);
-    inst.game.player.x = VP_W - 120; inst.game.player.y = VP_H / 2;
-    inst.game.checkInteraction();
-    scenarios.push({ name: 'L1: Door without key', results: { level: inst.game.state.currentLevel } });
-  }
+  // L1: Door without key — SKIP 2b.3 (idem; `l1_door` lo construye la
+  // fachada del Nivel 1 en runtime, no esta en el VM).
+  scenarios.push({ name: 'L1: Door without key', results: {}, skipped: 'N1-dyn-specific' });
 
-  // L1: Door with key → level 2
-  {
-    const inst = createInstance(script, htmlSource, SEED);
-    inst.initGame(1);
-    inst.game.state.keysCollected[1] = true;
-    inst.game.player.x = VP_W - 120; inst.game.player.y = VP_H / 2;
-    inst.game.checkInteraction();
-    scenarios.push({ name: 'L1: Door with key → level 2', results: { level: inst.game.state.currentLevel } });
-  }
+  // L1: Door with key → level 2 — SKIP 2b.3 (idem; prueba la
+  // transicion N1→N2, dependiente de la puerta del Nivel 1).
+  scenarios.push({ name: 'L1: Door with key → level 2', results: {}, skipped: 'N1-dyn-specific' });
 
   // L2: Safe wrong code
   {
     const inst = createInstance(script, htmlSource, SEED);
     inst.initGame(2);
-    inst.game.player.x = VP_W - 160; inst.game.player.y = 130;
+    inst.game.player.x = LVL_W - 160; inst.game.player.y = 130;
     inst.game.checkInteraction();
     const modalOpen = !inst.doc.getElementById('safe-modal')?.classList?.contains('hidden');
     inst.game.typeSafeDigit('1'); inst.game.typeSafeDigit('2');
@@ -334,7 +343,7 @@ function runInteractionScenarios(label, script, htmlSource) {
   {
     const inst = createInstance(script, htmlSource, SEED);
     inst.initGame(2);
-    inst.game.player.x = VP_W - 160; inst.game.player.y = 130;
+    inst.game.player.x = LVL_W - 160; inst.game.player.y = 130;
     inst.game.checkInteraction();
     inst.game.typeSafeDigit('8'); inst.game.typeSafeDigit('3');
     inst.game.typeSafeDigit('1'); inst.game.typeSafeDigit('4');
@@ -383,7 +392,7 @@ function runInteractionScenarios(label, script, htmlSource) {
   {
     const inst = createInstance(script, htmlSource, SEED);
     inst.initGame(3);
-    inst.game.player.x = VP_W - 120; inst.game.player.y = VP_H / 2;
+    inst.game.player.x = LVL_W - 120; inst.game.player.y = LVL_H / 2;
     inst.game.checkInteraction();
     const noKeyPaused = inst.game.state.isPaused;
     inst.game.state.keysCollected[3] = true;
@@ -393,9 +402,12 @@ function runInteractionScenarios(label, script, htmlSource) {
   }
 
   // ── Game over + restart ───────────────────────────────
+  // 2b.3: antes initGame(1). El flujo game-over + restart es
+  // nivel-agnostico (candles, isPaused, gameOverVis, restart). Usamos
+  // N2 porque N1 no puebla ghosts/interactables en el VM.
   {
     const inst = createInstance(script, htmlSource, SEED);
-    inst.initGame(1);
+    inst.initGame(2);
     inst.game.state.candles = 1;
     inst.game.state.isInvulnerable = false;
     const g = inst.game.ghosts[0];
@@ -423,9 +435,10 @@ function runInteractionScenarios(label, script, htmlSource) {
   }
 
   // ── Pause / resume ────────────────────────────────────
+  // 2b.3: antes initGame(1). Mecanica de pausa es nivel-agnostica.
   {
     const inst = createInstance(script, htmlSource, SEED);
-    inst.initGame(1);
+    inst.initGame(2);
     for (let i = 0; i < 30; i++) {
       inst.game.setKeys({ KeyD: true, KeyW: false, KeyS: false, KeyA: false, Space: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false });
       inst.game.setMouse({ x: 800, y: 360 });
@@ -479,9 +492,10 @@ function runInteractionScenarios(label, script, htmlSource) {
   }
 
   // ── Sanity → 0 ────────────────────────────────────────
+  // 2b.3: antes initGame(1). Dinamica de cordura es nivel-agnostica.
   {
     const inst = createInstance(script, htmlSource, SEED);
-    inst.initGame(1);
+    inst.initGame(2);
     inst.game.state.battery = 99999;
     inst.game.state.maxBattery = 99999;
     for (let i = 0; i < 1500; i++) {
@@ -502,9 +516,10 @@ function runInteractionScenarios(label, script, htmlSource) {
   }
 
   // ── Battery → 0 ───────────────────────────────────────
+  // 2b.3: antes initGame(1). Dinamica de bateria/camara es nivel-agnostica.
   {
     const inst = createInstance(script, htmlSource, SEED);
-    inst.initGame(1);
+    inst.initGame(2);
     for (let i = 0; i < 800; i++) {
       inst.game.setKeys({ Space: true, KeyW: false, KeyS: false, KeyA: false, KeyD: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false });
       inst.game.setMouse({ x: 640, y: 360 });
@@ -525,9 +540,11 @@ function runInteractionScenarios(label, script, htmlSource) {
   }
 
   // ── Window resize during game ──────────────────────────
+  // L2/L3 usan dimensiones fijas (LEVEL_W×LEVEL_H): el resize del
+  // viewport NO escala entidades. Solo viewport se actualiza.
   {
     const inst = createInstance(script, htmlSource, SEED);
-    inst.initGame(1);
+    inst.initGame(2);
     for (let i = 0; i < 100; i++) {
       inst.game.setKeys({ KeyD: true, KeyW: false, KeyS: false, KeyA: false, Space: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false });
       inst.game.setMouse({ x: 800, y: 360 });
@@ -540,7 +557,6 @@ function runInteractionScenarios(label, script, htmlSource) {
       i0x: inst.game.interactables[0].x, i0y: inst.game.interactables[0].y,
     };
     const newW = 1600, newH = 900;
-    const scaleX = newW / VP_W, scaleY = newH / VP_H;
     inst.mockWindow.innerWidth = newW;
     inst.mockWindow.innerHeight = newH;
     inst.triggerWinEvent('resize');
@@ -554,21 +570,22 @@ function runInteractionScenarios(label, script, htmlSource) {
     scenarios.push({
       name: 'Window resize during game',
       results: {
-        playerX: Math.abs(after.px - before.px * scaleX) < 0.01,
-        playerY: Math.abs(after.py - before.py * scaleY) < 0.01,
-        wallX: Math.abs(after.w0.x - before.w0.x * scaleX) < 0.01,
-        wallW: Math.abs(after.w0.w - before.w0.w * scaleX) < 0.01,
-        ghostX: Math.abs(after.g0x - before.g0x * scaleX) < 0.01,
-        interactX: Math.abs(after.i0x - before.i0x * scaleX) < 0.01,
+        playerX: Math.abs(after.px - before.px) < 0.01,
+        playerY: Math.abs(after.py - before.py) < 0.01,
+        wallX: Math.abs(after.w0.x - before.w0.x) < 0.01,
+        wallW: Math.abs(after.w0.w - before.w0.w) < 0.01,
+        ghostX: Math.abs(after.g0x - before.g0x) < 0.01,
+        interactX: Math.abs(after.i0x - before.i0x) < 0.01,
         viewportUpdated: after.vw === newW && after.vh === newH,
       },
     });
   }
 
   // ── Focus loss clears keys and pauses ─────────────────
+  // 2b.3: antes initGame(1). Blur/visibilitychange nivel-agnostico.
   {
     const inst = createInstance(script, htmlSource, SEED);
-    inst.initGame(1);
+    inst.initGame(2);
     inst.doc.getElementById('hud').classList.remove('hidden');
     for (let i = 0; i < 30; i++) {
       inst.game.setKeys({ KeyD: true, KeyW: false, KeyS: false, KeyA: false, Space: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false });
@@ -832,6 +849,12 @@ console.log('╚═════════════════════�
 let cat1Pass = true;
 for (const level of LEVELS) {
   const o = origFrames[level], c = currFrames[level];
+  if (!COMPARE_MATRIX.cat1[level]) {
+    const skipped = (o?.stateSnaps?.length ?? 0);
+    skippedByCat.cat1 += skipped;
+    console.log(`  Level ${level}: SKIPPED (${SKIP_REASON}) — ${skipped} snaps saltados`);
+    continue;
+  }
   if (o.error || c.error) { console.log(`  Level ${level}: ERROR — ${o.error || c.error}`); cat1Pass = false; continue; }
   let ld = 0;
   for (let i = 0; i < Math.min(o.stateSnaps.length, c.stateSnaps.length); i++) {
@@ -901,6 +924,12 @@ const HUD_FIELDS = [
 ];
 for (const level of LEVELS) {
   const o = origFrames[level], c = currFrames[level];
+  if (!COMPARE_MATRIX.cat3[level]) {
+    const skipped = (o?.hudSnaps?.length ?? 0);
+    skippedByCat.cat3 += skipped;
+    console.log(`  Level ${level}: SKIPPED (${SKIP_REASON}) — ${skipped} snaps saltados`);
+    continue;
+  }
   if (o.error || c.error) { console.log(`  Level ${level}: ERROR`); cat3Pass = false; continue; }
   let hd = 0;
   for (let i = 0; i < Math.min(o.hudSnaps.length, c.hudSnaps.length); i++) {
@@ -923,6 +952,12 @@ console.log('╚═════════════════════�
 let cat4Pass = true;
 for (const level of LEVELS) {
   const o = origFrames[level], c = currFrames[level];
+  if (!COMPARE_MATRIX.cat4[level]) {
+    const skipped = (o?.sounds?.length ?? 0);
+    skippedByCat.cat4 += skipped;
+    console.log(`  Level ${level}: SKIPPED (${SKIP_REASON}) — ${skipped} sonidos saltados`);
+    continue;
+  }
   if (o.error || c.error) { console.log(`  Level ${level}: ERROR`); cat4Pass = false; continue; }
   const sd = compareSounds(o.sounds, c.sounds);
   const oc = { click: 0, footstep: 0, jumpscare: 0, pickup: 0 };
@@ -952,6 +987,13 @@ const levelForGhost = { stalker: 1, crawler: 2, screamer: 3 };
 
 for (const gType of ghostTypes) {
   const lvl = levelForGhost[gType];
+  if (!COMPARE_MATRIX.cat5[lvl]) {
+    const oStates = origCov[lvl]?.aiStates[gType] || {};
+    const skipped = Object.values(oStates).reduce((a, b) => a + b, 0);
+    skippedByCat.cat5states += skipped;
+    console.log(`  ${gType.toUpperCase()} (Level ${lvl}): SKIPPED (${SKIP_REASON}) — ${skipped} muestras saltadas\n`);
+    continue;
+  }
   const oStates = origCov[lvl]?.aiStates[gType] || {};
   const cStates = currCov[lvl]?.aiStates[gType] || {};
   const allStatesForType = ALL_AI_STATES[gType];
@@ -978,6 +1020,11 @@ for (const gType of ghostTypes) {
 // Hits comparison
 console.log('\n  Damage taken (hits):');
 for (const level of LEVELS) {
+  if (!COMPARE_MATRIX.cat5[level]) {
+    skippedByCat.cat5hits += 1;
+    console.log(`    Level ${level}: SKIPPED (${SKIP_REASON}) — 1 muestra de hits saltada`);
+    continue;
+  }
   const oh = origCov[level]?.hits ?? '?', ch = currCov[level]?.hits ?? '?';
   const frames = origCov[level]?.totalFrames ?? '?';
   console.log(`    Level ${level} (${frames} frames): orig=${oh}  curr=${ch}  [${oh === ch ? 'MATCH' : 'DIFF'}]`);
@@ -1017,6 +1064,12 @@ const RENDER_FIELDS = [
 ];
 for (const level of LEVELS) {
   const o = origFrames[level], c = currFrames[level];
+  if (!COMPARE_MATRIX.cat6[level]) {
+    const skipped = (o?.renderSnaps?.length ?? 0);
+    skippedByCat.cat6 += skipped;
+    console.log(`  Level ${level}: SKIPPED (${SKIP_REASON}) — ${skipped} snaps saltados`);
+    continue;
+  }
   if (o.error || c.error) { console.log(`  Level ${level}: ERROR`); cat6Pass = false; continue; }
   const oSnaps = o.renderSnaps || [];
   const cSnaps = c.renderSnaps || [];
@@ -1049,13 +1102,25 @@ console.log(cat6Pass ? '\n  ✓ ALL RENDERER FRAMES MATCH' : '\n  ✗ RENDERER F
 console.log('\n╔══════════════════════════════════════════════════════════╗');
 console.log('║  SUMMARY                                                ║');
 console.log('╚══════════════════════════════════════════════════════════╝\n');
-console.log(`  1. Game State:       ${cat1Pass ? 'PASS' : 'FAIL'}`);
+const label = (catKey, pass) => {
+  const m = COMPARE_MATRIX[catKey];
+  if (!m) return pass ? 'PASS' : 'FAIL';
+  const l2 = m[2] ? (pass ? 'N2:MATCH' : 'N2:DIFF') : 'N2:n/a';
+  const l3 = m[3] ? (pass ? 'N3:MATCH' : 'N3:DIFF') : 'N3:n/a';
+  const l1 = m[1] ? 'N1:cmp' : 'L1:SKIPPED';
+  return `${pass ? 'PASS' : 'FAIL'}  (${l2}  ${l3}  ${l1})`;
+};
+console.log(`  1. Game State:       ${label('cat1', cat1Pass)}`);
 console.log(`  2. Interactions:     ${cat2Pass ? 'PASS' : 'FAIL'}`);
-console.log(`  3. HUD DOM:          ${cat3Pass ? 'PASS' : 'FAIL'}`);
-console.log(`  4. Audio:            ${cat4Pass ? 'PASS' : 'FAIL'}`);
-console.log(`  5. AI Coverage:      ${cat5Pass ? 'PASS' : 'FAIL'}`);
-console.log(`  6. Renderer Frames:  ${cat6Pass ? 'PASS' : 'FAIL'}`);
+console.log(`  3. HUD DOM:          ${label('cat3', cat3Pass)}`);
+console.log(`  4. Audio:            ${label('cat4', cat4Pass)}`);
+console.log(`  5. AI Coverage:      ${label('cat5', cat5Pass)}`);
+console.log(`  6. Renderer Frames:  ${label('cat6', cat6Pass)}`);
+console.log(`\n  Skips N1 totales: cat1=${skippedByCat.cat1} snaps · cat3=${skippedByCat.cat3} snaps · cat4=${skippedByCat.cat4} sonidos · cat5=${skippedByCat.cat5states} muestras AI + ${skippedByCat.cat5hits} hits · cat6=${skippedByCat.cat6} snaps`);
+
+// Exit 0 solo si N2/N3 pasan en todas las categorias; N1 no es parte
+// del criterio (se salta por diseno en 2b.3b).
 const allPass = cat1Pass && cat2Pass && cat3Pass && cat4Pass && cat5Pass && cat6Pass;
-console.log(`\n  ${allPass ? 'ALL 6 CATEGORIES PASS' : 'SOME CATEGORIES FAILED'}`);
+console.log(`\n  ${allPass ? 'N2/N3 PASS · L1 SKIPPED' : 'N2/N3 FAILED (al menos una categoria)'}`);
 
 process.exit(allPass ? 0 : 1);

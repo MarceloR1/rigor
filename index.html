@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/level1-atmosphere.css">
 </head>
 <body class="text-gray-200">
 
@@ -39,8 +40,8 @@
         <!-- Top Bar: Level, Candles, Battery, Sanity -->
         <div class="flex justify-between items-start gap-4">
             <div class="border-2 p-3 md:p-4">
-                <h2 id="hud-level-title" class="text-red-500 font-black tracking-widest uppercase text-sm md:text-base drop-shadow">NIVEL 1: EL PASILLO</h2>
-                <p id="hud-level-desc" class="text-[11px] md:text-xs text-gray-300 mt-1 leading-relaxed">Encuentra la anomalía en el pasillo que se repite para revelar la llave.</p>
+                <h2 id="hud-level-title" class="text-red-500 font-black tracking-widest uppercase text-sm md:text-base drop-shadow">NIVEL 1: LA RESIDENCIA</h2>
+                <p id="hud-level-desc" class="text-[11px] md:text-xs text-gray-300 mt-1 leading-relaxed">Explora la casa en penumbras. Encuentra la Llave Antigua y huye hacia el sótano.</p>
                 <div class="mt-2.5 flex items-center gap-2 md:gap-3 text-xs font-mono flex-wrap">
                     <span class="text-yellow-400 font-bold bg-yellow-950/70 border border-yellow-700/60 px-2.5 py-1 rounded">
                         <i class="fa-solid fa-key mr-1"></i> LLAVES: <span id="hud-keys" class="text-white">0/3</span>
@@ -256,6 +257,17 @@
         <button type="button" id="victory-menu" class="px-8 py-3.5 font-bold tracking-widest uppercase shadow-2xl transition-transform hover:scale-105">VOLVER AL MENÚ PRINCIPAL</button>
     </div>
 
-    <script type="module" src="js/game.js"></script>
+    <!--
+      Region accesible UNICA reusada por hud.announce (ver js/main.js). Vive
+      aqui porque los contenedores de pantalla (menu, HUD, modales) ya
+      alternan `hidden` y perderian la region con ellos; permanece fuera
+      para que un anuncio sobreviva a cualquier transicion. aria-live="polite"
+      por defecto para los avisos de telegrafia del Nivel 1 (effects.js);
+      main.js aplica role="alert" SOLO cuando falla la carga del nivel y lo
+      retira en el siguiente anuncio no-urgente.
+    -->
+    <div id="aria-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

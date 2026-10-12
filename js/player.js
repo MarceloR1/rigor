@@ -1,7 +1,7 @@
 import { CONFIG } from './config.js';
 import { audio } from './audio.js';
-import { state, player, viewport, world, session } from './state.js';
-import { setupL1Loop } from './levels.js';
+import { state, player, world, session } from './state.js';
+import { collidesWithWalls } from './entities.js';
 
 export function updateCamera(delta, keys) {
     if (keys['Space'] && state.battery > 0 && !state.l3Hidden) {
@@ -33,6 +33,15 @@ export function updateSanity(delta, canvas) {
     }
 }
 
+/**
+ * Mueve al jugador segun keys. Devuelve true si se desplazo (para que
+ * el actualizador de IA sepa si el crawler debe oirlo).
+ *
+ * En el Nivel 1, el cruce de la frontera lo decide la fachada via
+ * onPlayerMoved (ver level1/app/index.js). player.js NO llama a
+ * setupL1Loop ni teletransporta: esa responsabilidad vive en el
+ * dominio del Nivel 1 y se activa por el efecto CICLO_AVANZADO.
+ */
 export function updatePlayerMovement(delta, frameScale, keys) {
     if (!state.l3Hidden) {
         let dx = 0;
@@ -49,23 +58,21 @@ export function updatePlayerMovement(delta, frameScale, keys) {
             const nextX = player.x + (dx / len) * player.speed * frameScale;
             const nextY = player.y + (dy / len) * player.speed * frameScale;
 
-            let collide = false;
-            world.walls.forEach((wall) => {
-                if (
-                    nextX > wall.x - player.radius &&
-                    nextX < wall.x + wall.w + player.radius &&
-                    nextY > wall.y - player.radius &&
-                    nextY < wall.y + wall.h + player.radius
-                ) {
-                    collide = true;
-                }
-            });
-
-            if (!collide) {
+            if (!collidesWithWalls({ x: nextX, y: nextY }, player.radius, world.walls)) {
                 player.x = nextX;
                 player.y = nextY;
                 moved = true;
+            } else if (state.currentLevel === 1) {
+                if (dx !== 0 && !collidesWithWalls({ x: nextX, y: player.y }, player.radius, world.walls)) {
+                    player.x = nextX;
+                    moved = true;
+                } else if (dy !== 0 && !collidesWithWalls({ x: player.x, y: nextY }, player.radius, world.walls)) {
+                    player.y = nextY;
+                    moved = true;
+                }
+            }
 
+            if (moved) {
                 player.stepTimer += delta;
                 if (player.stepTimer > CONFIG.FOOTSTEP_INTERVAL) {
                     audio.playFootstep();
@@ -73,21 +80,11 @@ export function updatePlayerMovement(delta, frameScale, keys) {
                 }
             }
         }
-
-        updateCorridorLoop();
         return moved;
     }
 
     updateBreathMinigame(delta);
     return false;
-}
-
-function updateCorridorLoop() {
-    if (state.currentLevel === 1 && player.x > viewport.width - 50) {
-        player.x = 70;
-        state.l1LoopCount++;
-        setupL1Loop();
-    }
 }
 
 function updateBreathMinigame(delta) {

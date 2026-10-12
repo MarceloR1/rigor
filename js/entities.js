@@ -1,5 +1,20 @@
-import { CONFIG } from './config.js';
-import { state, player, viewport, world, session } from './state.js';
+import { CONFIG, LEVEL_W, LEVEL_H } from './config.js';
+import { state, player, world, session } from './state.js';
+
+/**
+ * AABB expandido por `radius` vs punto. Es la UNICA regla de colision
+ * jugador-pared del juego; vive aqui porque es pura y es consumida
+ * tanto por updatePlayerMovement como por tests de geometria.
+ */
+export function collidesWithWalls(pos, radius, walls) {
+    return walls.some(
+        (wall) =>
+            pos.x > wall.x - radius &&
+            pos.x < wall.x + wall.w + radius &&
+            pos.y > wall.y - radius &&
+            pos.y < wall.y + wall.h + radius
+    );
+}
 
 export function hasClearSight(fromX, fromY, toX, toY) {
     const distance = Math.hypot(toX - fromX, toY - fromY);
@@ -10,7 +25,7 @@ export function hasClearSight(fromX, fromY, toX, toY) {
         const sampleY = fromY + (toY - fromY) * ratio;
         if (
             world.walls.some(
-                (wall) => sampleX > wall.x && sampleX < wall.x + wall.w && sampleY > wall.y && sampleY < wall.y + wall.h
+                (wall) => !wall.isFurniture && sampleX > wall.x && sampleX < wall.x + wall.w && sampleY > wall.y && sampleY < wall.y + wall.h
             )
         ) {
             return false;
@@ -27,9 +42,11 @@ function updateStalker(ghost, ctx) {
         ghost.stateTimer = CONFIG.STALKER_FLEE_TIME;
         ghost.isFleeing = true;
     } else if (ghost.aiState === 'flee' && ghost.stateTimer <= 0) {
-        ghost.aiState = 'reposition';
+        ghost.aiState = ghost.path?.length ? 'reposition' : 'patrol';
         ghost.stateTimer = CONFIG.STALKER_REPOSITION_TIME;
-        ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
+        if (ghost.path?.length) {
+            ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
+        }
     } else if (ghost.aiState === 'reposition' && ghost.stateTimer <= 0) {
         ghost.aiState = 'patrol';
     } else if (ghost.aiState === 'windup' && ghost.stateTimer <= 0) {
@@ -40,12 +57,11 @@ function updateStalker(ghost, ctx) {
         ghost.aiState = 'recover';
         ghost.stateTimer = CONFIG.STALKER_RECOVER_TIME;
     } else if (ghost.aiState === 'recover' && ghost.stateTimer <= 0) {
-        ghost.aiState = 'reposition';
+        ghost.aiState = ghost.path?.length ? 'reposition' : 'patrol';
         ghost.stateTimer = 0.45;
     } else if (
         ghost.aiState === 'patrol' &&
-        hasLineOfSight &&
-        distance < CONFIG.STALKER_DETECT_RANGE &&
+        ((hasLineOfSight && distance < CONFIG.STALKER_DETECT_RANGE) || (ctx.playerMoving && distance < 260)) &&
         ghost.lungeCooldown <= 0
     ) {
         ghost.lastKnown.x = player.x;
@@ -74,10 +90,14 @@ function updateStalker(ghost, ctx) {
         currentSpeed *= CONFIG.STALKER_LUNGE_SPEED_MULT;
         ghost.isCharging = true;
     } else if (ghost.aiState === 'reposition') {
-        const waypoint = ghost.path[ghost.pathIdx];
-        targetX = waypoint.x;
-        targetY = waypoint.y;
-        currentSpeed *= CONFIG.STALKER_REPOSITION_SPEED_MULT;
+        if (ghost.path?.length) {
+            const waypoint = ghost.path[ghost.pathIdx % ghost.path.length];
+            targetX = waypoint.x;
+            targetY = waypoint.y;
+            currentSpeed *= CONFIG.STALKER_REPOSITION_SPEED_MULT;
+        } else {
+            ghost.aiState = 'patrol';
+        }
     }
 
     return { targetX, targetY, currentSpeed };
@@ -99,13 +119,15 @@ function moveGhost(ghost, targetX, targetY, currentSpeed, frameScale) {
         if (ghost.isFleeing) moveAngle += Math.PI;
         const step = currentSpeed * frameScale;
         const collides = (x, y) =>
-            world.walls.some(
-                (wall) =>
-                    x + ghost.radius > wall.x &&
-                    x - ghost.radius < wall.x + wall.w &&
-                    y + ghost.radius > wall.y &&
-                    y - ghost.radius < wall.y + wall.h
-            ) ||
+            world.walls.some((wall) => {
+                const pad = wall.isFurniture ? -4 : 0;
+                return (
+                    x + ghost.radius + pad > wall.x &&
+                    x - ghost.radius - pad < wall.x + wall.w &&
+                    y + ghost.radius + pad > wall.y &&
+                    y - ghost.radius - pad < wall.y + wall.h
+                );
+            }) ||
             world.interactables.some((object) => {
                 if (!['wardrobe', 'altar', 'safe'].includes(object.type)) return false;
                 const obstacleRadius = object.type === 'wardrobe' ? 34 : object.type === 'safe' ? 31 : 30;
@@ -113,8 +135,8 @@ function moveGhost(ghost, targetX, targetY, currentSpeed, frameScale) {
             }) ||
             (state.currentLevel === 2 &&
                 [
-                    { x: viewport.width * 0.35, y: viewport.height * 0.32 },
-                    { x: viewport.width * 0.55, y: viewport.height * 0.68 },
+                    { x: LEVEL_W * 0.35, y: LEVEL_H * 0.32 },
+                    { x: LEVEL_W * 0.55, y: LEVEL_H * 0.68 },
                 ].some(
                     (bed) => Math.abs(x - bed.x) < ghost.radius + 48 && Math.abs(y - bed.y) < ghost.radius + 28
                 ));
@@ -128,6 +150,27 @@ function moveGhost(ghost, targetX, targetY, currentSpeed, frameScale) {
             ghost.y += Math.sin(moveAngleFound) * step;
         } else if (ghost.path?.length) {
             ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
+        }
+
+        // Resolucion anti-atasco: si el fantasma quedo empujado hacia un mueble o pared, expulsarlo suavemente
+        for (const wall of world.walls) {
+            const pad = wall.isFurniture ? -4 : 0;
+            if (
+                ghost.x + ghost.radius + pad > wall.x &&
+                ghost.x - ghost.radius - pad < wall.x + wall.w &&
+                ghost.y + ghost.radius + pad > wall.y &&
+                ghost.y - ghost.radius - pad < wall.y + wall.h
+            ) {
+                const overlapL = ghost.x + ghost.radius + pad - wall.x;
+                const overlapR = wall.x + wall.w - (ghost.x - ghost.radius - pad);
+                const overlapT = ghost.y + ghost.radius + pad - wall.y;
+                const overlapB = wall.y + wall.h - (ghost.y - ghost.radius - pad);
+                const minO = Math.min(overlapL, overlapR, overlapT, overlapB);
+                if (minO === overlapL) ghost.x -= overlapL;
+                else if (minO === overlapR) ghost.x += overlapR;
+                else if (minO === overlapT) ghost.y -= overlapT;
+                else ghost.y += overlapB;
+            }
         }
     }
 }
@@ -164,7 +207,9 @@ function updateCrawler(ghost, ctx) {
     } else if (ghost.aiState === 'track' && ghost.searchTimer <= 0) {
         ghost.aiState = 'search';
         ghost.stateTimer = CONFIG.CRAWLER_SEARCH_MOVE_TIME;
-        ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
+        if (ghost.path?.length) {
+            ghost.pathIdx = (ghost.pathIdx + 1) % ghost.path.length;
+        }
     } else if (ghost.aiState === 'search' && ghost.stateTimer <= 0) {
         ghost.aiState = 'patrol';
     } else if (ghost.aiState === 'lunge' && ghost.stateTimer <= 0) {

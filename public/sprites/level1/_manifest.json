@@ -1,0 +1,343 @@
+{
+  "sprites": [
+    {
+      "id": "paciente_idle",
+      "file": "sheet2_fantasmas2.png",
+      "size": 19105,
+      "bbox": {
+        "x0": 82,
+        "y0": 12,
+        "x1": 186,
+        "y1": 336
+      },
+      "out": "paciente_idle.png"
+    },
+    {
+      "id": "paciente_ataque",
+      "file": "sheet2_fantasmas2.png",
+      "size": 25237,
+      "bbox": {
+        "x0": 612,
+        "y0": 40,
+        "x1": 941,
+        "y1": 323
+      },
+      "out": "paciente_ataque.png"
+    },
+    {
+      "id": "enfermera_idle",
+      "file": "sheet2_fantasmas2.png",
+      "size": 20822,
+      "bbox": {
+        "x0": 88,
+        "y0": 348,
+        "x1": 209,
+        "y1": 676
+      },
+      "out": "enfermera_idle.png"
+    },
+    {
+      "id": "enfermera_ataque",
+      "file": "sheet2_fantasmas2.png",
+      "size": 22291,
+      "bbox": {
+        "x0": 663,
+        "y0": 370,
+        "x1": 879,
+        "y1": 674
+      },
+      "out": "enfermera_ataque.png"
+    },
+    {
+      "id": "forense_idle",
+      "file": "sheet2_fantasmas2.png",
+      "size": 24068,
+      "bbox": {
+        "x0": 91,
+        "y0": 688,
+        "x1": 243,
+        "y1": 1019
+      },
+      "out": "forense_idle.png"
+    },
+    {
+      "id": "forense_ataque",
+      "file": "sheet2_fantasmas2.png",
+      "size": 27956,
+      "bbox": {
+        "x0": 574,
+        "y0": 699,
+        "x1": 911,
+        "y1": 1014
+      },
+      "out": "forense_ataque.png"
+    },
+    {
+      "id": "retrato_a_normal",
+      "file": "sheet3_retratos.png",
+      "size": 35264,
+      "bbox": {
+        "x0": 519,
+        "y0": 341,
+        "x1": 761,
+        "y1": 681
+      },
+      "out": "retrato_a_normal.png"
+    },
+    {
+      "id": "retrato_a_anomalia",
+      "file": "sheet3_retratos.png",
+      "size": 37493,
+      "bbox": {
+        "x0": 775,
+        "y0": 341,
+        "x1": 1017,
+        "y1": 681
+      },
+      "out": "retrato_a_anomalia.png"
+    },
+    {
+      "id": "retrato_b_normal",
+      "file": "sheet3_retratos.png",
+      "size": 34124,
+      "bbox": {
+        "x0": 535,
+        "y0": 682,
+        "x1": 761,
+        "y1": 1019
+      },
+      "out": "retrato_b_normal.png"
+    },
+    {
+      "id": "muneca_a_normal",
+      "file": "sheet4_munecas.png",
+      "size": 35295,
+      "bbox": {
+        "x0": 518,
+        "y0": 682,
+        "x1": 761,
+        "y1": 1016
+      },
+      "out": "muneca_a_normal.png"
+    },
+    {
+      "id": "muneca_a_anomalia",
+      "file": "sheet4_munecas.png",
+      "size": 34043,
+      "bbox": {
+        "x0": 777,
+        "y0": 682,
+        "x1": 1014,
+        "y1": 1003
+      },
+      "out": "muneca_a_anomalia.png"
+    },
+    {
+      "id": "camilla_a_normal",
+      "file": "sheet4_camillas.png",
+      "size": 57083,
+      "bbox": {
+        "x0": 6,
+        "y0": 19,
+        "x1": 506,
+        "y1": 499
+      },
+      "out": "camilla_a_normal.png"
+    },
+    {
+      "id": "camilla_a_anomalia",
+      "file": "sheet4_camillas.png",
+      "size": 85823,
+      "bbox": {
+        "x0": 518,
+        "y0": 19,
+        "x1": 1018,
+        "y1": 499
+      },
+      "out": "camilla_a_anomalia.png"
+    },
+    {
+      "id": "camilla_b_normal",
+      "file": "sheet4_camillas.png",
+      "size": 73480,
+      "bbox": {
+        "x0": 8,
+        "y0": 523,
+        "x1": 502,
+        "y1": 1017
+      },
+      "out": "camilla_b_normal.png"
+    },
+    {
+      "id": "lampara_techo",
+      "file": "sheet5_ambiente.png",
+      "size": 19328,
+      "bbox": {
+        "x0": 64,
+        "y0": 0,
+        "x1": 279,
+        "y1": 298
+      },
+      "out": "lampara_techo.png"
+    },
+    {
+      "id": "mesa_lampara",
+      "file": "sheet5_ambiente.png",
+      "size": 25660,
+      "bbox": {
+        "x0": 735,
+        "y0": 12,
+        "x1": 950,
+        "y1": 334
+      },
+      "out": "mesa_lampara.png"
+    },
+    {
+      "id": "silla_ruedas",
+      "file": "sheet5_ambiente.png",
+      "size": 41587,
+      "bbox": {
+        "x0": 40,
+        "y0": 345,
+        "x1": 327,
+        "y1": 672
+      },
+      "out": "silla_ruedas.png"
+    },
+    {
+      "id": "carrito_medico",
+      "file": "sheet5_ambiente.png",
+      "size": 35933,
+      "bbox": {
+        "x0": 397,
+        "y0": 349,
+        "x1": 659,
+        "y1": 674
+      },
+      "out": "carrito_medico.png"
+    },
+    {
+      "id": "soporte_suero",
+      "file": "sheet5_ambiente.png",
+      "size": 11672,
+      "bbox": {
+        "x0": 787,
+        "y0": 493,
+        "x1": 947,
+        "y1": 681
+      },
+      "out": "soporte_suero.png"
+    },
+    {
+      "id": "banco_espera",
+      "file": "sheet5_ambiente.png",
+      "size": 44920,
+      "bbox": {
+        "x0": 45,
+        "y0": 690,
+        "x1": 340,
+        "y1": 1018
+      },
+      "out": "banco_espera.png"
+    },
+    {
+      "id": "charco_sangre",
+      "file": "sheet6_manchas.png",
+      "size": 49193,
+      "bbox": {
+        "x0": 25,
+        "y0": 53,
+        "x1": 485,
+        "y1": 464
+      },
+      "out": "charco_sangre.png"
+    },
+    {
+      "id": "arrastre_sangre",
+      "file": "sheet6_manchas.png",
+      "size": 22397,
+      "bbox": {
+        "x0": 539,
+        "y0": 22,
+        "x1": 1003,
+        "y1": 477
+      },
+      "out": "arrastre_sangre.png"
+    },
+    {
+      "id": "huellas_sangre",
+      "file": "sheet6_manchas.png",
+      "size": 21240,
+      "bbox": {
+        "x0": 39,
+        "y0": 541,
+        "x1": 482,
+        "y1": 997
+      },
+      "out": "huellas_sangre.png"
+    },
+    {
+      "id": "papeles_suelo",
+      "file": "sheet6_manchas.png",
+      "size": 122778,
+      "bbox": {
+        "x0": 541,
+        "y0": 545,
+        "x1": 998,
+        "y1": 986
+      },
+      "out": "papeles_suelo.png"
+    },
+    {
+      "id": "puerta_normal",
+      "file": "sheet7_puertas.png",
+      "size": 58533,
+      "bbox": {
+        "x0": 51,
+        "y0": 75,
+        "x1": 462,
+        "y1": 961
+      },
+      "out": "puerta_normal.png"
+    },
+    {
+      "id": "puerta_cadena",
+      "file": "sheet7_puertas.png",
+      "size": 69331,
+      "bbox": {
+        "x0": 538,
+        "y0": 73,
+        "x1": 998,
+        "y1": 962
+      },
+      "out": "puerta_cadena.png"
+    },
+    {
+      "id": "muneca_b_normal",
+      "file": "muneca_normal3.png",
+      "size": 101834,
+      "bbox": {
+        "x0": 36,
+        "y0": 59,
+        "x1": 985,
+        "y1": 1011
+      },
+      "out": "muneca_b_normal.png"
+    }
+  ],
+  "texturas": [
+    {
+      "id": "pared",
+      "file": "pared_panel.png",
+      "outPath": "pared.jpg",
+      "size": 137596
+    },
+    {
+      "id": "piso_parquet",
+      "file": "piso_parquet.png",
+      "outPath": "piso_parquet.jpg",
+      "size": 245925
+    }
+  ],
+  "contacto": "/home/valeria/Documentos/rigor_mortis/rigor/public/sprites/level1/_contacto.png"
+}

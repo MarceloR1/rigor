@@ -24,4 +24,5 @@
 @import "./components/modals.css";
 @import "./states.css";
 @import "./animations.css";
+@import "./components/touch.css";
 @import "./responsive.css";
