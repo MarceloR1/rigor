@@ -5,9 +5,7 @@
  * (MeshStandardMaterial, no autoiluminado): si no hay luz, no se ve,
  * manteniendo el pacto "la oscuridad es la mecanica".
  *
- * Pensado para candidatos (retratos/muñecas/camillas) y fantasmas. Para
- * decals del piso usar createDecalMesh (no mira a la camara: plano
- * horizontal sobre el suelo).
+ * Pensado para candidatos (retratos/muñecas/camillas) y fantasmas.
  */
 
 import { getSpriteTexture, fallbackTexture } from './textures.js';
@@ -128,27 +126,3 @@ export function faceCamera(group, cameraPos) {
     group.rotation.y = Math.atan2(dx, dz);
 }
 
-/**
- * Decal plano sobre el piso (no billboard). alphaTest bajo para suavizar
- * bordes de las manchas.
- */
-export function createDecalMesh(THREE, id, size = 1.4) {
-    const texture = getSpriteTexture(id) ?? fallbackTexture(THREE, id);
-    const material = new THREE.MeshStandardMaterial({
-        map: texture,
-        alphaTest: 0.15,
-        transparent: true,
-        roughness: 0.95,
-        metalness: 0,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-    });
-    const img = texture?.image;
-    const aspect = img && img.width ? img.width / img.height : 1;
-    const geo = new THREE.PlaneGeometry(size * aspect, size);
-    const mesh = new THREE.Mesh(geo, material);
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.y = -0.05;
-    mesh.receiveShadow = true;
-    return mesh;
-}

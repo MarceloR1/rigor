@@ -164,10 +164,6 @@ export function getProceduralTexture(THREE, name) {
     return texture;
 }
 
-export function areTexturesReady() {
-    return true;
-}
-
 export function loadLevel1Textures(THREE) {
     getProceduralTexture(THREE, 'wood_floor');
     getProceduralTexture(THREE, 'wallpaper');

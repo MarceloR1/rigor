@@ -311,32 +311,6 @@ export class GameRenderer3D {
         if (level === 3) this.addChapelDetails(worldWidth, worldDepth);
     }
 
-    addCorridorDetails(worldWidth, worldDepth) {
-        const brass = makeMaterial(0x756247, { metalness: 0.48, roughness: 0.44 });
-        const inset = makeMaterial(0x272725, { roughness: 0.86 });
-        for (const side of [-1, 1]) {
-            const wallZ = worldDepth / 2 + side * 3;
-            const innerZ = wallZ - side * 0.34;
-            for (let x = 2.4; x < worldWidth - 1.4; x += 4.4) {
-                const panel = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.62, 0.035), inset);
-                panel.position.set(x, 0.72, innerZ);
-                this.worldRoot.add(panel);
-
-                const sconce = new THREE.Group();
-                addBox(sconce, 0.11, 0.44, 0.12, brass, 0, 0, 0);
-                addBox(sconce, 0.22, 0.06, 0.17, brass, 0, 0.23, 0);
-                const glass = new THREE.Mesh(new THREE.SphereGeometry(0.105, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd99a }));
-                glass.position.y = 0.04;
-                sconce.add(glass);
-                const lamp = new THREE.PointLight(0xe5bb7e, 1.05, 4.3, 2.2);
-                lamp.position.y = 0.04;
-                sconce.add(lamp);
-                sconce.position.set(x, 1.03, innerZ);
-                this.worldRoot.add(sconce);
-            }
-        }
-    }
-
     addMorgueDetails(worldWidth, worldDepth) {
         const steel = makeMaterial(0x465052, { metalness: 0.62, roughness: 0.4 });
         const mattress = makeMaterial(0x827b6f, { roughness: 0.86 });

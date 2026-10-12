@@ -3,7 +3,7 @@
  * 100% Responsive: escala a pantallas de telefono (360px+) hasta 4K.
  */
 
-export const HOUSE_LAYOUT = Object.freeze({
+const HOUSE_LAYOUT = Object.freeze({
     WALL_THICKNESS: 20,
     PERIMETER_MARGIN: 40,
     WIDTH: 1200,
@@ -71,7 +71,7 @@ export function getMultiMonsterWaypoints(viewport) {
     };
 }
 
-export function getFurnitureCollision(b) {
+function getFurnitureCollision(b) {
     return [
         { x: b.left + b.width * 0.25 - 30, y: b.top + 16, w: 60, h: 22, isFurniture: true },
         { x: b.left + b.width * 0.38 - 14, y: b.top + 16, w: 28, h: 22, isFurniture: true },

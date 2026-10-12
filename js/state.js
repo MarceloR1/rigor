@@ -14,9 +14,7 @@ export let state = {
 
     // Level 1: Corridor Loop
     l1LoopCount: 1,
-    l1AnomalyActive: false,
     l1AnomalyType: 0,
-    l1JumpscareTriggered: false,
 
     // Carga asincrona del modulo del Nivel 1 (fase 2b.3). levelLoadToken
     // compuerta anti-carrera: cambia en cada loadLevel/onExit; un

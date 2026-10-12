@@ -36,10 +36,3 @@ export function buildHouseWorld(deps, { setPlayerSpawn = false } = {}) {
         player.y = spawn.y;
     }
 }
-
-export function removeKeyFromWorld(world) {
-    const idx = world.interactables.findIndex((i) => i.type === 'l1_key');
-    if (idx !== -1) {
-        world.interactables.splice(idx, 1);
-    }
-}
