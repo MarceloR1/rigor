@@ -22,7 +22,7 @@
  *      enterLevel(1) -> level1Wire.enter() -> fachada arranca.
  */
 
-import { setLevel1Loader, getRunSeed } from './game.js';
+import { setLevel1Loader, getRunSeed, tryRestoreSession } from './game.js';
 import { createLevel1Wire } from './level1/app/wire.js';
 import { state, player, world, viewport } from './state.js';
 import { audio } from './audio.js';
@@ -69,6 +69,7 @@ const wire = createLevel1Wire({
 });
 
 setLevel1Loader(wire);
+tryRestoreSession();
 
 // Hook de prueba E2E (deuda 2b.3b, retirar en 2c junto con la limpieza
 // de debug3d). Solo se expone cuando la URL trae `?debug3d` (igual que

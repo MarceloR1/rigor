@@ -369,3 +369,72 @@ function gameLoop(time) {
 }
 
 render();
+
+// --- Persist state across page refresh ---
+
+window.addEventListener('beforeunload', () => {
+    if (!gameStarted) return;
+    const goVisible = !document.getElementById('game-over-screen').classList.contains('hidden');
+    const vicVisible = !document.getElementById('victory-screen').classList.contains('hidden');
+    if (goVisible || vicVisible) return;
+    try {
+        sessionStorage.setItem('rigor_save', JSON.stringify({
+            st: {
+                currentLevel: state.currentLevel,
+                candles: state.candles,
+                sanity: state.sanity,
+                battery: state.battery,
+                maxBattery: state.maxBattery,
+                isRecCameraOn: state.isRecCameraOn,
+                keysCollected: state.keysCollected,
+                l1LoopCount: state.l1LoopCount,
+                l1AnomalyType: state.l1AnomalyType,
+                l2Code: state.l2Code,
+                l2EnteredCode: state.l2EnteredCode,
+                l2SafeOpened: state.l2SafeOpened,
+                l3Hidden: state.l3Hidden,
+                l3AltarProgress: state.l3AltarProgress,
+                l3FinalChase: state.l3FinalChase,
+            },
+            pl: { x: player.x, y: player.y, angle: player.angle },
+            charKey: selectedCharacterKey,
+            seed: runSeed,
+        }));
+    } catch (_) {}
+});
+
+export function tryRestoreSession() {
+    let save;
+    try {
+        const raw = sessionStorage.getItem('rigor_save');
+        if (!raw) return;
+        sessionStorage.removeItem('rigor_save');
+        save = JSON.parse(raw);
+    } catch (_) { return; }
+    if (!save?.st || !save?.pl || !save?.charKey) return;
+    if (!CHARACTERS[save.charKey]) return;
+
+    selectedCharacterKey = save.charKey;
+    session.selectedChar = CHARACTERS[selectedCharacterKey];
+    runSeed = save.seed || 1;
+
+    Object.assign(state, save.st);
+    state.isInvulnerable = false;
+    state.invulnTimer = 0;
+    state.isPaused = true;
+
+    document.getElementById('character-badge').innerText = `PERSONAJE: ${session.selectedChar.name}`;
+    document.getElementById('character-select-screen').classList.add('hidden');
+    document.getElementById('hud').classList.remove('hidden');
+    document.getElementById('pause-screen').classList.remove('hidden');
+    gameStarted = true;
+    touchControls?.updateVisibility(true, true);
+
+    enterLevel(state.currentLevel);
+
+    player.x = save.pl.x;
+    player.y = save.pl.y;
+    player.angle = save.pl.angle;
+
+    requestAnimationFrame(gameLoop);
+}
